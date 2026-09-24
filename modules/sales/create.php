@@ -1,7 +1,7 @@
 ﻿<?php
 // =========================================================================
 // ឯកសារ: modules/sales/create.php
-// គោលបំណង: ផ្ទាំង POS គ្រឿងសំណង់ - ប្រអប់ Qty ធំទូលាយ គាំទ្រលេខរាប់ពាន់/ម៉ឺន
+// គោលបំណង: ផ្ទាំងលក់ POS - ជួសជុលបញ្ហា Redirect ទៅកាន់វិក្កយបត្រឱ្យចេញត្រូវ ID
 // =========================================================================
 
 $page_title = 'កន្លែងលក់គ្រឿងសំណង់ (POS)';
@@ -45,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['checkout'])) {
                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id";
             $stmt = $pdo->prepare($sql_sale);
             $stmt->execute([$invoice_no, $user_id, $subtotal, $discount, $total_amount, $payment_method, $payment_status, $customer_name, $customer_phone, $delivery_address]);
-            $sale_id = $stmt->fetchColumn();
+            $sale_id = (int)$stmt->fetchColumn();
 
             foreach ($cart as $item) {
                 $prod_stmt = $pdo->prepare("SELECT current_stock, cost_price, sale_price FROM products WHERE id = ?");
@@ -60,12 +60,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['checkout'])) {
                 $new_stock = $p['current_stock'] - $item['qty'];
                 db_query($pdo, "UPDATE products SET current_stock = ? WHERE id = ?", [$new_stock, $item['id']]);
 
-                record_stock_movement($pdo, $item['id'], 'SALE', $sale_id, -$item['qty'], $new_stock, "លក់ជូន: {} (#{})");
+                $note = "លក់ជូន: " . $customer_name . " (#" . $invoice_no . ")";
+                record_stock_movement($pdo, $item['id'], 'SALE', $sale_id, -$item['qty'], $new_stock, $note);
             }
 
             $pdo->commit();
             set_flash('success', "ការលក់ជោគជ័យ! ប័ណ្ណលេខ: " . $invoice_no);
-            redirect("/modules/sales/invoice.php?id={}");
+            
+            // កែសម្រួល Redirect ភ្ជាប់ជាមួយ ID ត្រឹមត្រូវ ១០០%
+            redirect('/modules/sales/invoice.php?id=' . $sale_id);
 
         } catch (Exception $e) {
             $pdo->rollBack();
@@ -85,7 +88,6 @@ $products = $pdo->query($sql_products)->fetchAll();
 ?>
 
 <style>
-/* លុបសញ្ញាព្រួញឡើងចុះ (Spinners) ក្នុងប្រអប់លេខ Qty ដើម្បីកុំឱ្យចង្អៀត */
 .qty-num-input::-webkit-inner-spin-button, 
 .qty-num-input::-webkit-outer-spin-button { 
     -webkit-appearance: none; 
@@ -150,7 +152,7 @@ $products = $pdo->query($sql_products)->fetchAll();
         </div>
     </div>
 
-    <!-- ផ្នែកខាងស្តាំ៖ កន្ត្រកទំនិញ & គិតលុយ -->
+    <!-- ផ្នែកខាងស្តាំ៖ ព័ត៌មានមេការ & កន្ត្រកទំនិញ -->
     <div class="col-lg-5 col-md-6">
         <div class="card border-0 shadow-sm rounded-3 p-3">
             <h6 class="fw-bold mb-3 text-success"><i class="fa fa-shopping-cart me-2"></i>កន្ត្រកទំនិញ (Cart)</h6>
@@ -173,7 +175,6 @@ $products = $pdo->query($sql_products)->fetchAll();
                     </div>
                 </div>
 
-                <!-- តារាងកន្ត្រកទំនិញ -->
                 <div class="table-responsive" style="min-height: 180px; max-height: 230px; overflow-y: auto;">
                     <table class="table table-sm align-middle mb-0">
                         <thead class="table-light">
