@@ -1,7 +1,7 @@
 ﻿<?php
 // =========================================================================
 // ឯកសារ: index.php
-// គោលបំណង: ផ្ទាំងគ្រប់គ្រងទូទៅ (Professional Executive Dashboard)
+// គោលបំណង: ផ្ទាំងគ្រប់គ្រងដេប៉ូគ្រឿងសំណង់ (Dashboard) - បង្ហាញឯកតាពិត
 // =========================================================================
 
 $page_title = 'ផ្ទាំងគ្រប់គ្រងទូទៅ (Dashboard)';
@@ -9,7 +9,7 @@ require_once __DIR__ . '/includes/header.php';
 
 define('EXCHANGE_RATE', 4100);
 
-// ១. ទាញទិន្នន័យស្ថិតិសំខាន់ៗ (KPIs)
+// ១. ទាញទិន្នន័យស្ថិតិសំខាន់ៗ
 $total_products   = $pdo->query("SELECT COUNT(*) FROM products")->fetchColumn();
 $total_stock_qty  = $pdo->query("SELECT COALESCE(SUM(current_stock), 0) FROM products")->fetchColumn();
 $total_stock_cost = $pdo->query("SELECT COALESCE(SUM(current_stock * cost_price), 0) FROM products")->fetchColumn();
@@ -20,7 +20,7 @@ $today_sales  = $pdo->query("SELECT COALESCE(SUM(total_amount), 0) FROM sales WH
 $today_orders = $pdo->query("SELECT COUNT(*) FROM sales WHERE DATE(created_at) = CURRENT_DATE")->fetchColumn();
 $month_sales  = $pdo->query("SELECT COALESCE(SUM(total_amount), 0) FROM sales WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', CURRENT_DATE)")->fetchColumn();
 
-// ៣. ទាញការលក់ ៥ ចុងក្រោយ (Recent Sales)
+// ៣. ទាញការលក់ ៥ ចុងក្រោយ
 $recent_sales = $pdo->query("SELECT s.*, u.full_name AS cashier_name 
                              FROM sales s 
                              LEFT JOIN users u ON s.user_id = u.id 
@@ -33,14 +33,14 @@ $low_stock_items = $pdo->query("SELECT p.*, c.name AS category_name
                                 WHERE p.current_stock <= p.min_stock_alert 
                                 ORDER BY p.current_stock ASC LIMIT 5")->fetchAll();
 
-// ៥. ទាញទំនិញលក់ដាច់បំផុតប្រចាំខែ ៥ មុខ (Top 5 Best Sellers)
-$top_sellers = $pdo->query("SELECT p.name, c.name AS category_name, SUM(si.quantity) AS total_qty, SUM(si.subtotal) AS total_amount
+// ៥. ទាញទំនិញលក់ដាច់ប្រចាំខែ ភ្ជាប់ជាមួយ «ឯកតាពិត» របស់ទំនិញ (p.unit)
+$top_sellers = $pdo->query("SELECT p.name, p.unit, c.name AS category_name, SUM(si.quantity) AS total_qty, SUM(si.subtotal) AS total_amount
                             FROM sale_items si
                             JOIN products p ON si.product_id = p.id
                             LEFT JOIN categories c ON p.category_id = c.id
                             JOIN sales s ON si.sale_id = s.id
                             WHERE DATE_TRUNC('month', s.created_at) = DATE_TRUNC('month', CURRENT_DATE)
-                            GROUP BY p.id, p.name, c.name
+                            GROUP BY p.id, p.name, p.unit, c.name
                             ORDER BY total_qty DESC LIMIT 5")->fetchAll();
 ?>
 
@@ -80,11 +80,11 @@ $top_sellers = $pdo->query("SELECT p.name, c.name AS category_name, SUM(si.quant
 }
 </style>
 
-<!-- របារស្វាគមន៍ & ប៊ូតុងរហ័ស (Welcome Banner & Quick Action Buttons) -->
+<!-- របារស្វាគមន៍ & ប៊ូតុងរហ័ស -->
 <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
     <div>
         <h4 class="fw-bold mb-1 text-dark">សួស្តី, <?= e($_SESSION['user_name'] ?? 'Super Admin') ?> 👋</h4>
-        <p class="text-muted small mb-0">នេះជាទិដ្ឋភាពទូទៅនៃហាងទំនិញ និងចរន្តសាច់ប្រាក់របស់អ្នកនៅថ្ងៃនេះ</p>
+        <p class="text-muted small mb-0">នេះជាទិដ្ឋភាពទូទៅនៃដេប៉ូគ្រឿងសំណង់ និងចរន្តសាច់ប្រាក់របស់អ្នកនៅថ្ងៃនេះ</p>
     </div>
     <div class="d-flex gap-2">
         <a href="/modules/sales/create.php" class="btn btn-success shadow-sm px-3 fw-bold">
@@ -99,7 +99,7 @@ $top_sellers = $pdo->query("SELECT p.name, c.name AS category_name, SUM(si.quant
     </div>
 </div>
 
-<!-- បញ្ជីកាតស្ថិតិ ៤ (Modern Stat Cards) -->
+<!-- បញ្ជីកាតស្ថិតិ ៤ -->
 <div class="row g-3 mb-4">
     <!-- ១. ការលក់ថ្ងៃនេះ -->
     <div class="col-md-3 col-sm-6">
@@ -133,14 +133,14 @@ $top_sellers = $pdo->query("SELECT p.name, c.name AS category_name, SUM(si.quant
         </div>
     </div>
 
-    <!-- ៣. មុខទំនិញក្នុងស្តុក -->
+    <!-- ៣. មុខទំនិញក្នុងស្តុក (កែសម្រួលជាពាក្យ «ឯកតា») -->
     <div class="col-md-3 col-sm-6">
         <div class="card stat-card p-3">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
-                    <span class="text-muted small fw-bold">មុខទំនិញក្នុងហាង</span>
+                    <span class="text-muted small fw-bold">មុខទំនិញក្នុងដេប៉ូ</span>
                     <h3 class="fw-bold mb-0 text-dark mt-1"><?= number_format($total_products) ?> មុខ</h3>
-                    <small class="text-muted">ចំនួនសរុប: <strong><?= number_format($total_stock_qty) ?></strong> កំប៉ុង/កញ្ចប់</small>
+                    <small class="text-muted">ចំនួនសរុប: <strong><?= number_format($total_stock_qty) ?></strong> ឯកតា</small>
                 </div>
                 <div class="icon-shape bg-soft-purple">
                     <i class="fa fa-boxes-stacked"></i>
@@ -170,7 +170,7 @@ $top_sellers = $pdo->query("SELECT p.name, c.name AS category_name, SUM(si.quant
     </div>
 </div>
 
-<!-- ផ្នែកកណ្តាល៖ តារាងលក់ចុងក្រោយ & ព័ត៌មានជំនួយ -->
+<!-- ផ្នែកកណ្តាល -->
 <div class="row g-4">
     <!-- ខាងឆ្វេង (8 Cols)៖ ប្រវត្តិការលក់ចុងក្រោយ -->
     <div class="col-lg-8">
@@ -211,7 +211,6 @@ $top_sellers = $pdo->query("SELECT p.name, c.name AS category_name, SUM(si.quant
             </div>
         </div>
 
-        <!-- បញ្ជីទំនិញជិតអស់ពីស្តុក (Low Stock Alert Box) -->
         <?php if (!empty($low_stock_items)): ?>
             <div class="card stat-card p-3 border-start border-danger border-4">
                 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -233,7 +232,7 @@ $top_sellers = $pdo->query("SELECT p.name, c.name AS category_name, SUM(si.quant
                                 <tr>
                                     <td class="fw-bold"><?= e($item['name']) ?></td>
                                     <td><span class="badge bg-light text-dark border"><?= e($item['category_name'] ?: 'ទូទៅ') ?></span></td>
-                                    <td class="text-center text-danger fw-bold"><?= $item['current_stock'] ?></td>
+                                    <td class="text-center text-danger fw-bold"><?= $item['current_stock'] ?> <?= e($item['unit'] ?: '') ?></td>
                                     <td class="text-center text-muted"><?= $item['min_stock_alert'] ?></td>
                                 </tr>
                             <?php endforeach; ?>
@@ -244,16 +243,15 @@ $top_sellers = $pdo->query("SELECT p.name, c.name AS category_name, SUM(si.quant
         <?php endif; ?>
     </div>
 
-    <!-- ខាងស្តាំ (4 Cols)៖ ទំនិញលក់ដាច់ & សង្ខេបតម្លៃស្តុក -->
+    <!-- ខាងស្តាំ (4 Cols)៖ សង្ខេបតម្លៃស្តុក & ទំនិញលក់ដាច់ (បង្ហាញតាមឯកតាពិត) -->
     <div class="col-lg-4">
-        <!-- សង្ខេបតម្លៃស្តុកទំនិញក្នុងហាង -->
         <div class="card stat-card p-3 mb-4 bg-primary text-white">
-            <span class="text-white-50 small fw-bold text-uppercase">តម្លៃដើមនៃស្តុកសរុបក្នុងហាង</span>
+            <span class="text-white-50 small fw-bold text-uppercase">តម្លៃដើមនៃស្តុកសរុបក្នុងដេប៉ូ</span>
             <h3 class="fw-bold my-2 text-white">$<?= number_format($total_stock_cost, 2) ?></h3>
             <div class="text-white-50 small">គិតជាប្រាក់រៀល: <?= number_format($total_stock_cost * EXCHANGE_RATE) ?> ៛</div>
         </div>
 
-        <!-- ទំនិញលក់ដាច់បំផុត ៥ មុខ -->
+        <!-- ទំនិញលក់ដាច់បំផុត ៥ មុខ បង្ហាញតាមឯកតាពិត (ដើម, ប្រអប់, បាវ...) -->
         <div class="card stat-card p-3">
             <h6 class="fw-bold mb-3 text-dark pb-2 border-bottom">
                 <i class="fa fa-fire text-danger me-2"></i>ទំនិញលក់ដាច់ប្រចាំខែ
@@ -274,8 +272,9 @@ $top_sellers = $pdo->query("SELECT p.name, c.name AS category_name, SUM(si.quant
                                 </div>
                             </div>
                             <div class="text-end">
+                                <!-- បង្ហាញតាមឯកតាពិតរបស់ទំនិញនីមួយៗ -->
                                 <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
-                                    <?= $prod['total_qty'] ?> កញ្ចប់
+                                    <?= number_format($prod['total_qty']) ?> <?= e($prod['unit'] ?: 'ឯកតា') ?>
                                 </span>
                                 <div class="small fw-bold text-dark mt-1">$<?= number_format($prod['total_amount'], 2) ?></div>
                             </div>
