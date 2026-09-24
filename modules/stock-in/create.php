@@ -1,15 +1,15 @@
 ﻿<?php
 // =========================================================================
 // ឯកសារ: modules/stock-in/create.php
-// គោលបំណង: នាំចូលស្តុក + បង្ហាញ [ឈ្មោះប្រភេទ] ក្នុងបញ្ជីជ្រើសរើសទំនិញ
+// គោលបំណង: នាំចូលស្តុក + អាចវាយឈ្មោះអ្នកផ្គត់ផ្គង់ (Supplier) ផ្ទាល់ដៃ
 // =========================================================================
 
 $page_title = 'នាំចូលស្តុក (Stock In)';
 require_once __DIR__ . '/../../includes/header.php';
 
+// ១. ទាញបញ្ជីអ្នកផ្គត់ផ្គង់ និងទំនិញ
 $suppliers = $pdo->query("SELECT id, name FROM suppliers ORDER BY name ASC")->fetchAll();
 
-// ទាញទំនិញភ្ជាប់ជាមួយឈ្មោះ Category (c.name)
 $sql_products = "SELECT p.id, p.name, p.barcode, p.cost_price, p.current_stock, c.name AS category_name 
                  FROM products p 
                  LEFT JOIN categories c ON p.category_id = c.id 
@@ -17,18 +17,34 @@ $sql_products = "SELECT p.id, p.name, p.barcode, p.cost_price, p.current_stock, 
 $products = $pdo->query($sql_products)->fetchAll();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $supplier_id  = $_POST['supplier_id'] ?: null;
-    $reference_no = trim($_POST['reference_no'] ?? '') ?: 'PO-' . time();
-    $product_ids  = $_POST['product_id'] ?? [];
-    $quantities   = $_POST['quantity'] ?? [];
-    $cost_prices  = $_POST['cost_price'] ?? [];
-    $user_id      = $_SESSION['user_id'];
+    $supplier_name = trim($_POST['supplier_name'] ?? '');
+    $reference_no  = trim($_POST['reference_no'] ?? '') ?: 'PO-' . time();
+    $product_ids   = $_POST['product_id'] ?? [];
+    $quantities    = $_POST['quantity'] ?? [];
+    $cost_prices   = $_POST['cost_price'] ?? [];
+    $user_id       = $_SESSION['user_id'];
 
     if (empty($product_ids)) {
         set_flash('danger', 'សូមជ្រើសរើសទំនិញយ៉ាងហោចណាស់មួយមុខ!');
     } else {
         try {
             $pdo->beginTransaction();
+
+            // ២. ពិនិត្យឈ្មោះ Supplier: បើជាឈ្មោះថ្មី បញ្ចូលទៅ suppliers ដោយស្វ័យប្រវត្តិ
+            $supplier_id = null;
+            if ($supplier_name !== '') {
+                $stmt_s = $pdo->prepare("SELECT id FROM suppliers WHERE name = ?");
+                $stmt_s->execute([$supplier_name]);
+                $existing_sup = $stmt_s->fetch();
+
+                if ($existing_sup) {
+                    $supplier_id = $existing_sup['id'];
+                } else {
+                    $stmt_ins = $pdo->prepare("INSERT INTO suppliers (name) VALUES (?) RETURNING id");
+                    $stmt_ins->execute([$supplier_name]);
+                    $supplier_id = $stmt_ins->fetchColumn();
+                }
+            }
 
             $total_cost = 0;
             foreach ($product_ids as $i => $pid) {
@@ -37,10 +53,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $total_cost += ($qty * $cost);
             }
 
+            // ៣. បញ្ចូលក្នុង stock_ins
             $stmt = $pdo->prepare("INSERT INTO stock_ins (supplier_id, reference_no, user_id, total_cost) VALUES (?, ?, ?, ?) RETURNING id");
             $stmt->execute([$supplier_id, $reference_no, $user_id, $total_cost]);
             $stock_in_id = $stmt->fetchColumn();
 
+            // ៤. បញ្ចូល items និងបូកបន្ថែមស្តុក
             foreach ($product_ids as $i => $pid) {
                 $qty  = (int)$quantities[$i];
                 $cost = (float)$cost_prices[$i];
@@ -77,17 +95,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="card-body p-4">
         <form method="POST">
             <div class="row g-3 mb-4">
+                <!-- ប្រអប់វាយឈ្មោះ Supplier ផ្ទាល់ដៃ ឬជ្រើសរើសពី Datalist -->
                 <div class="col-md-6">
-                    <label class="form-label small">អ្នកផ្គត់ផ្គង់ (Supplier)</label>
-                    <select name="supplier_id" class="form-select form-select-sm">
-                        <option value="">-- ជ្រើសរើសអ្នកផ្គត់ផ្គង់ --</option>
+                    <label class="form-label small fw-bold">អ្នកផ្គត់ផ្គង់ (វាយឈ្មោះថ្មី ឬជ្រើសរើស)</label>
+                    <input list="suppliers-list" name="supplier_name" class="form-control form-control-sm" placeholder="វាយឈ្មោះអ្នកផ្គត់ផ្គង់ (ឧ. ដេប៉ូ A)...">
+                    <datalist id="suppliers-list">
                         <?php foreach ($suppliers as $sup): ?>
-                            <option value="<?= $sup['id'] ?>"><?= e($sup['name']) ?></option>
+                            <option value="<?= e($sup['name']) ?>"></option>
                         <?php endforeach; ?>
-                    </select>
+                    </datalist>
                 </div>
+                
                 <div class="col-md-6">
-                    <label class="form-label small">លេខយោងវិក្កយបត្រទិញចូល (Reference No)</label>
+                    <label class="form-label small fw-bold">លេខយោងវិក្កយបត្រទិញចូល (Reference No)</label>
                     <input type="text" name="reference_no" class="form-control form-control-sm" placeholder="PO-<?= time() ?>">
                 </div>
             </div>

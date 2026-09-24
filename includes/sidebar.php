@@ -6,6 +6,7 @@
         <div class="text-uppercase text-muted small fw-bold mt-3 mb-2 px-2">ទំនិញ & ស្តុក</div>
         <a href="/modules/products/index.php"><i class="fa fa-box me-2"></i> ទំនិញ</a>
         <a href="/modules/categories/index.php"><i class="fa fa-tags me-2"></i> ប្រភេទ</a>
+        <a href="/modules/suppliers/index.php"><i class="fa fa-truck me-2"></i> អ្នកផ្គត់ផ្គង់</a>
         <a href="/modules/stock-in/index.php"><i class="fa fa-truck-loading me-2"></i> នាំចូលស្តុក</a>
         <a href="/modules/adjustments/create.php"><i class="fa fa-sliders me-2"></i> កែតម្រូវស្តុក</a>
         <a href="/modules/movements/index.php"><i class="fa fa-history me-2"></i> ចលនាស្តុក</a>
