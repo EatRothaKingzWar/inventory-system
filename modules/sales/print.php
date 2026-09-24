@@ -1,7 +1,7 @@
-<?php
+﻿<?php
 // =========================================================================
 // ឯកសារ: modules/sales/print.php
-// គោលបំណង: ទម្រង់បោះពុម្ពប័ណ្ណទូទាត់ខ្នាត 80mm សម្រាប់ POS Thermal Printer
+// គោលបំណង: បោះពុម្ពប័ណ្ណទូទាត់សម្រាប់ហាងលក់នៅផ្ទះ (Thermal Receipt 80mm)
 // =========================================================================
 
 require_once __DIR__ . '/../../config/database.php';
@@ -11,11 +11,9 @@ require_login();
 
 $sale_id = (int)($_GET['id'] ?? 0);
 
-// ទាញទិន្នន័យវិក្កយបត្រ
 $sale = db_query($pdo, "SELECT s.*, u.full_name AS cashier_name FROM sales s LEFT JOIN users u ON s.user_id = u.id WHERE s.id = ?", [$sale_id])->fetch();
 if (!$sale) die("រកមិនឃើញវិក្កយបត្រ!");
 
-// ទាញទំនិញក្នុងវិក្កយបត្រ
 $items = db_query($pdo, "SELECT si.*, p.name FROM sale_items si JOIN products p ON si.product_id = p.id WHERE si.sale_id = ?", [$sale_id])->fetchAll();
 ?>
 <!DOCTYPE html>
@@ -24,11 +22,10 @@ $items = db_query($pdo, "SELECT si.*, p.name FROM sale_items si JOIN products p 
     <meta charset="UTF-8">
     <title>Print - <?= e($sale['invoice_no']) ?></title>
     <style>
-        /* កំណត់ទំហំក្រដាស 80mm សម្រាប់ម៉ាស៊ីនព្រីន POS */
         @page { size: 80mm auto; margin: 0; }
         body {
             font-family: 'Courier New', monospace, sans-serif;
-            width: 78mm;
+            width: 76mm;
             margin: auto;
             padding: 8px 4px;
             font-size: 12px;
@@ -37,24 +34,22 @@ $items = db_query($pdo, "SELECT si.*, p.name FROM sale_items si JOIN products p 
         .text-center { text-align: center; }
         .text-end { text-align: right; }
         .fw-bold { font-weight: bold; }
-        .border-bottom { border-bottom: 1px dashed #000; padding-bottom: 5px; margin-bottom: 5px; }
-        .border-top { border-top: 1px dashed #000; padding-top: 5px; margin-top: 5px; }
+        .border-dashed { border-bottom: 1px dashed #000; padding-bottom: 5px; margin-bottom: 5px; }
+        .border-top-dashed { border-top: 1px dashed #000; padding-top: 5px; margin-top: 5px; }
         table { width: 100%; border-collapse: collapse; }
         td, th { padding: 3px 0; }
-        @media print {
-            .no-print { display: none; }
-        }
+        @media print { .no-print { display: none; } }
     </style>
 </head>
 <body onload="window.print();">
 
-    <div class="text-center border-bottom">
-        <h3 style="margin:0;">ហាងទំនិញ / MY STORE</h3>
+    <div class="text-center border-dashed">
+        <h3 style="margin:0; font-size:16px;">ហាងលក់ទំនិញ / HOME STORE</h3>
         <p style="margin:2px 0;">រាជធានីភ្នំពេញ | Tel: 012 345 678</p>
-        <p style="margin:0;"><strong>វិក្កយបត្រ / RECEIPT</strong></p>
+        <p style="margin:2px 0;"><strong>ប័ណ្ណទូទាត់ប្រាក់ / RECEIPT</strong></p>
     </div>
 
-    <div style="font-size: 11px;" class="border-bottom">
+    <div style="font-size: 11px;" class="border-dashed">
         <div>លេខវិក្កយបត្រ: <?= e($sale['invoice_no']) ?></div>
         <div>កាលបរិច្ឆេទ: <?= date('d/m/Y H:i', strtotime($sale['created_at'])) ?></div>
         <div>អ្នកគិតលុយ: <?= e($sale['cashier_name'] ?: 'Staff') ?></div>
@@ -81,7 +76,7 @@ $items = db_query($pdo, "SELECT si.*, p.name FROM sale_items si JOIN products p 
         </tbody>
     </table>
 
-    <div class="border-top" style="line-height: 1.6;">
+    <div class="border-top-dashed" style="line-height: 1.6;">
         <div style="display:flex; justify-content:space-between;">
             <span>សរុបរង:</span>
             <span>$<?= number_format($sale['subtotal'], 2) ?></span>
@@ -92,19 +87,19 @@ $items = db_query($pdo, "SELECT si.*, p.name FROM sale_items si JOIN products p 
                 <span>-$<?= number_format($sale['discount'], 2) ?></span>
             </div>
         <?php endif; ?>
-        <div class="fw-bold border-top" style="display:flex; justify-content:space-between; font-size:14px;">
+        <div class="fw-bold border-top-dashed" style="display:flex; justify-content:space-between; font-size:14px;">
             <span>សរុប (USD):</span>
             <span>$<?= number_format($sale['total_amount'], 2) ?></span>
         </div>
-        <div style="display:flex; justify-content:space-between;">
-            <span>ប្រាក់រៀល (1$=4100៛):</span>
+        <div style="display:flex; justify-content:space-between; font-weight:bold;">
+            <span>ជាប្រាក់រៀល (4,100៛):</span>
             <span><?= number_format($sale['total_amount'] * 4100) ?> ៛</span>
         </div>
     </div>
 
-    <div class="text-center border-top" style="margin-top: 10px;">
-        <p style="margin: 4px 0;">សូមអរគុណ! សូមអញ្ជើញមកម្តងទៀត!</p>
-        <small>Thank you for your purchase!</small>
+    <div class="text-center border-top-dashed" style="margin-top: 10px;">
+        <p style="margin: 3px 0;">សូមអរគុណ! សូមអញ្ជើញមកម្តងទៀត!</p>
+        <small>Thank you for your visit!</small>
     </div>
 
 </body>
