@@ -1,11 +1,15 @@
 ﻿<?php
 // =========================================================================
 // ឯកសារ: modules/products/edit.php
-// គោលបំណង: កែប្រែទំនិញ និងឯកតា
+// គោលបំណង: កែប្រែទំនិញ និងស្តុក (អនុញ្ញាតតែ ADMIN ប៉ុណ្ណោះ)
 // =========================================================================
 
-$page_title = 'កែប្រែទំនិញ';
-require_once __DIR__ . '/../../includes/header.php';
+require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../../includes/functions.php';
+require_once __DIR__ . '/../../includes/auth.php';
+
+// បិទសិទ្ធិដាច់ខាត៖ Cashier មិនអាចចូលទំព័រនេះឡើយ!
+require_role(['admin']);
 
 $id = (int)($_GET['id'] ?? 0);
 $stmt = db_query($pdo, "SELECT * FROM products WHERE id = ?", [$id]);
@@ -56,6 +60,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 }
+
+$page_title = 'កែប្រែទំនិញ';
+require_once __DIR__ . '/../../includes/header.php';
 ?>
 
 <div class="card border-0 shadow-sm rounded-3 mx-auto" style="max-width: 800px;">

@@ -1,11 +1,13 @@
 ﻿<?php
 // =========================================================================
 // ឯកសារ: modules/products/index.php
-// គោលបំណង: បង្ហាញបញ្ជីទំនិញភ្ជាប់ជាមួយឯកតា (បាវ, ដើម, គីឡូ...)
+// គោលបំណង: បញ្ជីទំនិញ - លាក់ថ្លៃដើម និងលាក់ប៊ូតុង Edit/Delete ពី Cashier
 // =========================================================================
 
 $page_title = 'គ្រប់គ្រងមុខទំនិញ';
 require_once __DIR__ . '/../../includes/header.php';
+
+$user_role = $_SESSION['user_role'] ?? 'cashier';
 
 $search = trim($_GET['search'] ?? '');
 $params = [];
@@ -33,7 +35,11 @@ $products = db_query($pdo, $sql, $params)->fetchAll();
                     <a href="index.php" class="btn btn-light"><i class="fa fa-times"></i></a>
                 <?php endif; ?>
             </form>
-            <a href="create.php" class="btn btn-primary"><i class="fa fa-plus me-1"></i> បន្ថែមទំនិញថ្មី</a>
+            
+            <!-- ប៊ូតុងបន្ថែមទំនិញថ្មី បង្ហាញតែ Admin & Staff ប៉ុណ្ណោះ -->
+            <?php if ($user_role === 'admin' || $user_role === 'staff'): ?>
+                <a href="create.php" class="btn btn-primary"><i class="fa fa-plus me-1"></i> បន្ថែមទំនិញថ្មី</a>
+            <?php endif; ?>
         </div>
 
         <div class="table-responsive">
@@ -44,10 +50,18 @@ $products = db_query($pdo, $sql, $params)->fetchAll();
                         <th>ឈ្មោះទំនិញ</th>
                         <th>ប្រភេទ</th>
                         <th class="text-center">ឯកតា</th>
-                        <th>តម្លៃទិញ</th>
+                        
+                        <!-- ថ្លៃដើម បង្ហាញតែ Admin & Staff ប៉ុណ្ណោះ (Cashier មិនអាចឃើញទេ) -->
+                        <?php if ($user_role === 'admin' || $user_role === 'staff'): ?>
+                            <th>តម្លៃទិញដើម</th>
+                        <?php endif; ?>
+
                         <th>តម្លៃលក់</th>
                         <th class="text-center">ស្តុកនៅសល់</th>
-                        <th class="text-center" width="90">សកម្មភាព</th>
+
+                        <?php if ($user_role === 'admin'): ?>
+                            <th class="text-center" width="90">សកម្មភាព</th>
+                        <?php endif; ?>
                     </tr>
                 </thead>
                 <tbody>
@@ -69,11 +83,12 @@ $products = db_query($pdo, $sql, $params)->fetchAll();
                                 <?php endif; ?>
                             </td>
                             <td><span class="badge bg-light text-dark border"><?= e($p['category_name'] ?: 'ទូទៅ') ?></span></td>
-                            
-                            <!-- បង្ហាញឯកតា -->
                             <td class="text-center"><span class="badge bg-secondary-subtle text-secondary px-2 py-1"><?= e($p['unit'] ?: 'ដើម') ?></span></td>
                             
-                            <td><?= format_money($p['cost_price']) ?></td>
+                            <?php if ($user_role === 'admin' || $user_role === 'staff'): ?>
+                                <td class="text-muted small"><?= format_money($p['cost_price']) ?></td>
+                            <?php endif; ?>
+
                             <td class="text-success fw-bold"><?= format_money($p['sale_price']) ?></td>
                             
                             <td class="text-center">
@@ -82,10 +97,13 @@ $products = db_query($pdo, $sql, $params)->fetchAll();
                                 </span>
                             </td>
                             
-                            <td class="text-center">
-                                <a href="edit.php?id=<?= $p['id'] ?>" class="btn btn-sm btn-outline-primary" title="កែប្រែ"><i class="fa fa-edit"></i></a>
-                                <a href="delete.php?id=<?= $p['id'] ?>" class="btn btn-sm btn-outline-danger" title="លុប" onclick="return confirm('តើអ្នកប្រាកដជាចង់លុបទំនិញនេះមែនទេ?')"><i class="fa fa-trash"></i></a>
-                            </td>
+                            <!-- ប៊ូតុង Edit/Delete បង្ហាញតែ Admin ប៉ុណ្ណោះ -->
+                            <?php if ($user_role === 'admin'): ?>
+                                <td class="text-center">
+                                    <a href="edit.php?id=<?= $p['id'] ?>" class="btn btn-sm btn-outline-primary" title="កែប្រែ"><i class="fa fa-edit"></i></a>
+                                    <a href="delete.php?id=<?= $p['id'] ?>" class="btn btn-sm btn-outline-danger" title="លុប" onclick="return confirm('តើអ្នកប្រាកដជាចង់លុបទំនិញនេះមែនទេ?')"><i class="fa fa-trash"></i></a>
+                                </td>
+                            <?php endif; ?>
                         </tr>
                     <?php endforeach; endif; ?>
                 </tbody>
