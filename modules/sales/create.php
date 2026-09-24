@@ -1,7 +1,7 @@
 ﻿<?php
 // =========================================================================
 // ឯកសារ: modules/sales/create.php
-// គោលបំណង: ផ្ទាំងលក់ POS - រៀបចំប្រអប់ចំនួន (Qty) ឱ្យធំទូលាយ មិនធ្លាក់ជួរ
+// គោលបំណង: ផ្ទាំង POS គ្រឿងសំណង់ - ប្រអប់ Qty ធំទូលាយ គាំទ្រលេខរាប់ពាន់/ម៉ឺន
 // =========================================================================
 
 $page_title = 'កន្លែងលក់គ្រឿងសំណង់ (POS)';
@@ -84,6 +84,18 @@ $sql_products = "SELECT p.id, p.barcode, p.name, p.unit, p.sale_price, p.current
 $products = $pdo->query($sql_products)->fetchAll();
 ?>
 
+<style>
+/* លុបសញ្ញាព្រួញឡើងចុះ (Spinners) ក្នុងប្រអប់លេខ Qty ដើម្បីកុំឱ្យចង្អៀត */
+.qty-num-input::-webkit-inner-spin-button, 
+.qty-num-input::-webkit-outer-spin-button { 
+    -webkit-appearance: none; 
+    margin: 0; 
+}
+.qty-num-input {
+    -moz-appearance: textfield;
+}
+</style>
+
 <div class="row g-3">
     <!-- ផ្នែកខាងឆ្វេង៖ ជ្រើសរើសទំនិញ -->
     <div class="col-lg-7 col-md-6">
@@ -93,7 +105,6 @@ $products = $pdo->query($sql_products)->fetchAll();
                 <small class="text-muted">1$ = <strong><?= number_format(EXCHANGE_RATE) ?> ៛</strong></small>
             </div>
 
-            <!-- Filter ប្រភេទ -->
             <div class="d-flex gap-1 mb-2 overflow-x-auto pb-1" style="white-space: nowrap;">
                 <button type="button" class="btn btn-sm btn-primary category-btn active px-3" onclick="filterCategory('all', this)">
                     <i class="fa fa-th-large me-1"></i>ទាំងអស់
@@ -139,7 +150,7 @@ $products = $pdo->query($sql_products)->fetchAll();
         </div>
     </div>
 
-    <!-- ផ្នែកខាងស្តាំ៖ ព័ត៌មានមេការ & កន្ត្រកទំនិញ -->
+    <!-- ផ្នែកខាងស្តាំ៖ កន្ត្រកទំនិញ & គិតលុយ -->
     <div class="col-lg-5 col-md-6">
         <div class="card border-0 shadow-sm rounded-3 p-3">
             <h6 class="fw-bold mb-3 text-success"><i class="fa fa-shopping-cart me-2"></i>កន្ត្រកទំនិញ (Cart)</h6>
@@ -162,16 +173,16 @@ $products = $pdo->query($sql_products)->fetchAll();
                     </div>
                 </div>
 
-                <!-- តារាងកន្ត្រកទំនិញ (រៀបចំជួរឱ្យធំទូលាយ មិនធ្លាក់ជួរ) -->
+                <!-- តារាងកន្ត្រកទំនិញ -->
                 <div class="table-responsive" style="min-height: 180px; max-height: 230px; overflow-y: auto;">
                     <table class="table table-sm align-middle mb-0">
                         <thead class="table-light">
                             <tr>
                                 <th>ទំនិញ</th>
-                                <th width="115" class="text-center">ចំនួន (Qty)</th>
-                                <th class="text-end" width="70">តម្លៃ</th>
+                                <th width="135" class="text-center">ចំនួន (Qty)</th>
+                                <th class="text-end" width="65">តម្លៃ</th>
                                 <th class="text-end" width="75">សរុប</th>
-                                <th width="25"></th>
+                                <th width="20"></th>
                             </tr>
                         </thead>
                         <tbody id="cart-list">
@@ -239,7 +250,7 @@ $products = $pdo->query($sql_products)->fetchAll();
 <script>
 const RATE = <?= EXCHANGE_RATE ?>;
 const allProducts = <?= json_encode($products) ?>;
-const D_SIGN = String.fromCharCode(36); // សញ្ញា $ ការពារកុំឱ្យ PowerShell លុប
+const D_SIGN = String.fromCharCode(36);
 let cart = [];
 let currentCategory = 'all';
 
@@ -290,6 +301,10 @@ function setTypedQty(id, value) {
     renderCartView();
 }
 
+function formatCurrency(num) {
+    return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 function renderCartView() {
     const tbody = document.getElementById('cart-list');
     if (cart.length === 0) {
@@ -309,22 +324,23 @@ function renderCartView() {
         subtotal += total;
         html += '<tr>' +
             '<td>' +
-                '<div class="fw-bold text-dark text-truncate" style="max-width:110px;" title="' + item.name + '">' + item.name + '</div>' +
+                '<div class="fw-bold text-dark text-truncate" style="max-width:105px;" title="' + item.name + '">' + item.name + '</div>' +
                 '<span class="badge bg-light text-secondary border" style="font-size:10px;">' + item.unit + '</span>' +
             '</td>' +
             '<td>' +
-                '<div class="input-group input-group-sm mx-auto" style="width: 105px;">' +
+                '<div class="input-group input-group-sm mx-auto" style="width: 130px;">' +
                     '<button type="button" class="btn btn-outline-secondary px-2" onclick="changeQty(' + item.id + ', -1)">-</button>' +
                     '<input type="number" min="1" max="' + item.maxStock + '" value="' + item.qty + '" ' +
-                           'class="form-control text-center p-0 fw-bold fs-6" ' +
+                           'class="form-control text-center p-1 fw-bold fs-6 qty-num-input" ' +
+                           'style="min-width: 65px;" ' +
                            'onchange="setTypedQty(' + item.id + ', this.value)" ' +
                            'onkeydown="if(event.key===\'Enter\'){event.preventDefault(); this.blur();}" ' +
                            'onfocus="this.select()">' +
                     '<button type="button" class="btn btn-outline-secondary px-2" onclick="changeQty(' + item.id + ', 1)">+</button>' +
                 '</div>' +
             '</td>' +
-            '<td class="text-end small">' + D_SIGN + item.price.toFixed(2) + '</td>' +
-            '<td class="text-end fw-bold text-success small">' + D_SIGN + total.toFixed(2) + '</td>' +
+            '<td class="text-end small">' + D_SIGN + formatCurrency(item.price) + '</td>' +
+            '<td class="text-end fw-bold text-success small">' + D_SIGN + formatCurrency(total) + '</td>' +
             '<td><button type="button" class="btn btn-sm text-danger p-0 ms-1" onclick="changeQty(' + item.id + ', -' + item.qty + ')"><i class="fa fa-times"></i></button></td>' +
         '</tr>';
     });
@@ -343,8 +359,8 @@ function updateCalculation(subtotal) {
     let grandUSD = Math.max(0, subtotal - discount);
     let grandKHR = Math.round(grandUSD * RATE);
 
-    document.getElementById('subtotal-val').innerText = D_SIGN + subtotal.toFixed(2);
-    document.getElementById('grand-total-usd').innerText = D_SIGN + grandUSD.toFixed(2);
+    document.getElementById('subtotal-val').innerText = D_SIGN + formatCurrency(subtotal);
+    document.getElementById('grand-total-usd').innerText = D_SIGN + formatCurrency(grandUSD);
     document.getElementById('grand-total-khr').innerText = grandKHR.toLocaleString() + ' ៛';
 
     calcChange(grandUSD);
@@ -352,7 +368,7 @@ function updateCalculation(subtotal) {
 
 function calcChange(grandUSD) {
     if (typeof grandUSD === 'undefined') {
-        let text = document.getElementById('grand-total-usd').innerText.replace(D_SIGN, '');
+        let text = document.getElementById('grand-total-usd').innerText.replace(D_SIGN, '').replace(/,/g, '');
         grandUSD = parseFloat(text) || 0;
     }
     let received = parseFloat(document.getElementById('cash-received').value) || 0;
@@ -360,7 +376,7 @@ function calcChange(grandUSD) {
     let changeKHR = Math.round(changeUSD * RATE);
 
     if (received > 0) {
-        document.getElementById('change-text').innerText = D_SIGN + changeUSD.toFixed(2) + ' (' + changeKHR.toLocaleString() + ' ៛)';
+        document.getElementById('change-text').innerText = D_SIGN + formatCurrency(changeUSD) + ' (' + changeKHR.toLocaleString() + ' ៛)';
     } else {
         document.getElementById('change-text').innerText = D_SIGN + '0.00 (0 ៛)';
     }
