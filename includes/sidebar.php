@@ -1,0 +1,15 @@
+﻿<div class="sidebar p-3">
+    <h4 class="text-white fw-bold mb-4 text-center"><i class="fa fa-boxes-stacked me-2"></i>Stock POS</h4>
+    <nav>
+        <a href="/index.php"><i class="fa fa-tachometer-alt me-2"></i> ផ្ទាំងគ្រប់គ្រង</a>
+        <div class="text-uppercase text-muted small fw-bold mt-3 mb-2 px-2">ទំនិញ & ស្តុក</div>
+        <a href="/modules/products/index.php"><i class="fa fa-box me-2"></i> ទំនិញ</a>
+        <a href="/modules/categories/index.php"><i class="fa fa-tags me-2"></i> ប្រភេទ</a>
+        <a href="/modules/stock-in/index.php"><i class="fa fa-truck-loading me-2"></i> នាំចូលស្តុក</a>
+        <div class="text-uppercase text-muted small fw-bold mt-3 mb-2 px-2">ការលក់</div>
+        <a href="/modules/sales/create.php"><i class="fa fa-cash-register me-2"></i> កន្លែងលក់ (POS)</a>
+        <a href="/modules/sales/index.php"><i class="fa fa-receipt me-2"></i> បញ្ជីវិក្កយបត្រ</a>
+        <div class="text-uppercase text-muted small fw-bold mt-3 mb-2 px-2">របាយការណ៍</div>
+        <a href="/modules/reports/sales.php"><i class="fa fa-chart-line me-2"></i> របាយការណ៍លក់</a>
+    </nav>
+</div>
