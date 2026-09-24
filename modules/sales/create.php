@@ -1,7 +1,7 @@
 ﻿<?php
 // =========================================================================
 // ឯកសារ: modules/sales/create.php
-// គោលបំណង: ផ្ទាំងលក់ POS + Filter តាមប្រភេទ + បង្ហាញឈ្មោះប្រភេទការពារច្រឡំ
+// គោលបំណង: ផ្ទាំងលក់ POS គ្រឿងសំណង់ (បង្ហាញឯកតា បាវ, ដើម, គីឡូ... លើកាត និងកន្ត្រក)
 // =========================================================================
 
 $page_title = 'កន្លែងលក់ទំនិញផ្ទាល់ (POS)';
@@ -68,11 +68,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['checkout'])) {
     }
 }
 
-// ១. ទាញបញ្ជី Categories ទាំងអស់មកធ្វើប៊ូតុង Filter
 $categories = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC")->fetchAll();
 
-// ២. ទាញទំនិញភ្ជាប់ជាមួយឈ្មោះប្រភេទ (c.name)
-$sql_products = "SELECT p.id, p.barcode, p.name, p.sale_price, p.current_stock, p.category_id, c.name AS category_name 
+$sql_products = "SELECT p.id, p.barcode, p.name, p.unit, p.sale_price, p.current_stock, p.category_id, c.name AS category_name 
                  FROM products p 
                  LEFT JOIN categories c ON p.category_id = c.id 
                  WHERE p.current_stock > 0 
@@ -85,11 +83,11 @@ $products = $pdo->query($sql_products)->fetchAll();
     <div class="col-md-7">
         <div class="card border-0 shadow-sm rounded-3 p-3 h-100">
             <div class="d-flex justify-content-between align-items-center mb-2">
-                <h6 class="fw-bold mb-0 text-primary"><i class="fa fa-boxes me-2"></i>ទំនិញក្នុងហាង</h6>
+                <h6 class="fw-bold mb-0 text-primary"><i class="fa fa-boxes me-2"></i>ទំនិញគ្រឿងសំណង់</h6>
                 <small class="text-muted">អត្រាប្តូរប្រាក់: <strong>1$ = <?= number_format(EXCHANGE_RATE) ?> ៛</strong></small>
             </div>
 
-            <!-- ប៊ូតុង Filter តាមប្រភេទមុខទំនិញ -->
+            <!-- ប៊ូតុង Filter តាមប្រភេទ -->
             <div class="d-flex gap-1 mb-2 overflow-x-auto pb-1" style="white-space: nowrap;">
                 <button type="button" class="btn btn-sm btn-primary category-btn active px-3" onclick="filterCategory('all', this)">
                     <i class="fa fa-th-large me-1"></i>ទាំងអស់
@@ -101,13 +99,11 @@ $products = $pdo->query($sql_products)->fetchAll();
                 <?php endforeach; ?>
             </div>
             
-            <!-- ប្រអប់ស្កេនបាកូដ / ស្វែងរក -->
             <div class="input-group mb-3">
                 <span class="input-group-text bg-white"><i class="fa fa-barcode"></i></span>
                 <input type="text" id="barcode-input" class="form-control" placeholder="ស្កេនបាកូដ ឬវាយឈ្មោះទំនិញ..." autofocus>
             </div>
             
-            <!-- បញ្ជីទំនិញជា Cards -->
             <div class="row row-cols-2 row-cols-lg-3 g-2" style="max-height: 500px; overflow-y: auto;">
                 <?php foreach ($products as $p): ?>
                     <div class="col product-item" 
@@ -117,10 +113,9 @@ $products = $pdo->query($sql_products)->fetchAll();
                          data-category-id="<?= $p['category_id'] ?: 0 ?>">
                         
                         <div class="card p-2 h-100 border text-center shadow-sm product-card" 
-                             style="cursor: pointer; transition: 0.2s;"
-                             onclick="addItemToCart(<?= $p['id'] ?>, '<?= addslashes(e($p['name'])) ?>', <?= $p['sale_price'] ?>, <?= $p['current_stock'] ?>, '<?= addslashes(e($p['category_name'] ?: 'ទូទៅ')) ?>')">
+                             style="cursor: pointer;"
+                             onclick="addItemToCart(<?= $p['id'] ?>, '<?= addslashes(e($p['name'])) ?>', <?= $p['sale_price'] ?>, <?= $p['current_stock'] ?>, '<?= addslashes(e($p['unit'] ?: 'ដើម')) ?>')">
                             
-                            <!-- បង្ហាញស្លាកឈ្មោះប្រភេទខាងលើ -->
                             <div class="mb-1">
                                 <span class="badge bg-secondary-subtle text-secondary border small px-2 py-1">
                                     <?= e($p['category_name'] ?: 'ទូទៅ') ?>
@@ -128,9 +123,9 @@ $products = $pdo->query($sql_products)->fetchAll();
                             </div>
 
                             <div class="fw-bold text-dark text-truncate" title="<?= e($p['name']) ?>"><?= e($p['name']) ?></div>
-                            <div class="text-success fw-bold fs-5 mb-0">$<?= number_format($p['sale_price'], 2) ?></div>
+                            <div class="text-success fw-bold fs-5 mb-0">$<?= number_format($p['sale_price'], 2) ?> <small class="text-muted fs-6">/ <?= e($p['unit'] ?: 'ដើម') ?></small></div>
                             <small class="text-danger fw-bold"><?= number_format($p['sale_price'] * EXCHANGE_RATE) ?> ៛</small>
-                            <div class="mt-1"><span class="badge bg-light text-secondary border">ស្តុក: <?= $p['current_stock'] ?></span></div>
+                            <div class="mt-1"><span class="badge bg-light text-secondary border">ស្តុក: <?= $p['current_stock'] ?> <?= e($p['unit'] ?: '') ?></span></div>
                         </div>
                     </div>
                 <?php endforeach; ?>
@@ -147,8 +142,8 @@ $products = $pdo->query($sql_products)->fetchAll();
                 <table class="table table-sm align-middle">
                     <thead class="table-light">
                         <tr>
-                            <th>ទំនិញ [ប្រភេទ]</th>
-                            <th width="110" class="text-center">ចំនួន</th>
+                            <th>ទំនិញ</th>
+                            <th width="125" class="text-center">ចំនួន (ឯកតា)</th>
                             <th>តម្លៃ</th>
                             <th>សរុប</th>
                             <th width="25"></th>
@@ -209,16 +204,16 @@ const allProducts = <?= json_encode($products) ?>;
 let cart = [];
 let currentCategory = 'all';
 
-function addItemToCart(id, name, price, maxStock, categoryName) {
+function addItemToCart(id, name, price, maxStock, unit) {
     let item = cart.find(x => x.id === id);
     if (item) {
         if (item.qty < maxStock) {
             item.qty++;
         } else {
-            alert('ទំនិញនេះមានក្នុងស្តុកតែ ' + maxStock + ' ប៉ុណ្ណោះ!');
+            alert('ទំនិញនេះមានក្នុងស្តុកតែ ' + maxStock + ' ' + unit + ' ប៉ុណ្ណោះ!');
         }
     } else {
-        cart.push({ id: id, name: name, price: parseFloat(price), qty: 1, maxStock: maxStock, category: categoryName });
+        cart.push({ id: id, name: name, price: parseFloat(price), qty: 1, maxStock: maxStock, unit: unit });
     }
     renderCartView();
 }
@@ -244,7 +239,7 @@ function setTypedQty(id, value) {
         qty = 1;
     } else if (qty > item.maxStock) {
         qty = item.maxStock;
-        alert('ស្តុកមានត្រឹមតែ ' + item.maxStock + ' ប៉ុណ្ណោះ!');
+        alert('ស្តុកមានត្រឹមតែ ' + item.maxStock + ' ' + item.unit + ' ប៉ុណ្ណោះ!');
     }
     item.qty = qty;
     renderCartView();
@@ -270,16 +265,17 @@ function renderCartView() {
         html += '<tr>' +
             '<td>' +
                 '<div class="small fw-bold text-truncate" style="max-width:115px;">' + item.name + '</div>' +
-                '<span class="badge bg-light text-muted border" style="font-size:10px;">' + item.category + '</span>' +
+                '<small class="text-muted">' + item.unit + '</small>' +
             '</td>' +
             '<td>' +
-                '<div class="input-group input-group-sm" style="width: 100px;">' +
+                '<div class="input-group input-group-sm" style="width: 120px;">' +
                     '<button type="button" class="btn btn-outline-secondary px-2" onclick="changeQty(' + item.id + ', -1)">-</button>' +
                     '<input type="number" min="1" max="' + item.maxStock + '" value="' + item.qty + '" ' +
                            'class="form-control text-center p-0 fw-bold" ' +
                            'onchange="setTypedQty(' + item.id + ', this.value)" ' +
                            'onkeydown="if(event.key===\'Enter\'){event.preventDefault(); this.blur();}" ' +
                            'onfocus="this.select()">' +
+                    '<span class="input-group-text px-1 small" style="font-size:10px;">' + item.unit + '</span>' +
                     '<button type="button" class="btn btn-outline-secondary px-2" onclick="changeQty(' + item.id + ', 1)">+</button>' +
                 '</div>' +
             '</td>' +
@@ -326,7 +322,6 @@ function calcChange(grandUSD) {
     }
 }
 
-// មុខងារ Filter តាម Category
 function filterCategory(catId, btn) {
     currentCategory = catId;
     document.querySelectorAll('.category-btn').forEach(b => {
@@ -358,7 +353,6 @@ function applyFilters() {
 
 document.getElementById('barcode-input').addEventListener('input', applyFilters);
 
-// ស្កេនបាកូដ USB
 document.getElementById('barcode-input').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
         e.preventDefault();
@@ -367,7 +361,7 @@ document.getElementById('barcode-input').addEventListener('keydown', function(e)
 
         let found = allProducts.find(p => (p.barcode && p.barcode.toLowerCase() === val) || p.name.toLowerCase() === val);
         if (found) {
-            addItemToCart(found.id, found.name, found.sale_price, found.current_stock, found.category_name || 'ទូទៅ');
+            addItemToCart(found.id, found.name, found.sale_price, found.current_stock, found.unit || 'ដើម');
             this.value = '';
             applyFilters();
         } else {

@@ -1,7 +1,7 @@
-<?php
+﻿<?php
 // =========================================================================
 // ឯកសារ: modules/products/edit.php
-// គោលបំណង: កែប្រែព័ត៌មានទំនិញ និងដូររូបភាព
+// គោលបំណង: កែប្រែទំនិញ និងឯកតា
 // =========================================================================
 
 $page_title = 'កែប្រែទំនិញ';
@@ -22,13 +22,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $barcode         = trim($_POST['barcode'] ?? '') ?: null;
     $name            = trim($_POST['name'] ?? '');
     $category_id     = $_POST['category_id'] ?: null;
+    $unit            = trim($_POST['unit'] ?? '') ?: 'ដើម';
     $cost_price      = (float)($_POST['cost_price'] ?? 0);
     $sale_price      = (float)($_POST['sale_price'] ?? 0);
     $current_stock   = (int)($_POST['current_stock'] ?? 0);
     $min_stock_alert = (int)($_POST['min_stock_alert'] ?? 5);
-    $image_path      = $product['image_path']; // រក្សារូបភាពចាស់ទុកសិន
+    $image_path      = $product['image_path'];
 
-    // ពិនិត្យមើលថាតើមាន Upload រូបភាពថ្មីមកជំនួសឬទេ
     if (!empty($_FILES['image']['name'])) {
         $file = $_FILES['image'];
         $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
@@ -46,9 +46,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($name === '') {
         set_flash('danger', 'សូមបញ្ចូលឈ្មោះទំនិញ!');
     } else {
-        $sql = "UPDATE products SET category_id=?, barcode=?, name=?, cost_price=?, sale_price=?, current_stock=?, min_stock_alert=?, image_path=? WHERE id=?";
+        $sql = "UPDATE products SET category_id=?, barcode=?, name=?, unit=?, cost_price=?, sale_price=?, current_stock=?, min_stock_alert=?, image_path=? WHERE id=?";
         try {
-            db_query($pdo, $sql, [$category_id, $barcode, $name, $cost_price, $sale_price, $current_stock, $min_stock_alert, $image_path, $id]);
+            db_query($pdo, $sql, [$category_id, $barcode, $name, $unit, $cost_price, $sale_price, $current_stock, $min_stock_alert, $image_path, $id]);
             set_flash('success', 'បានកែប្រែទិន្នន័យដោយជោគជ័យ!');
             redirect('/modules/products/index.php');
         } catch (PDOException $e) {
@@ -58,7 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 ?>
 
-<div class="card border-0 shadow-sm rounded-3" style="max-width: 750px; margin: auto;">
+<div class="card border-0 shadow-sm rounded-3 mx-auto" style="max-width: 800px;">
     <div class="card-header bg-white py-3 border-bottom">
         <h5 class="mb-0 fw-bold text-primary"><i class="fa fa-edit me-2"></i>កែប្រែទំនិញ: <?= e($product['name']) ?></h5>
     </div>
@@ -66,11 +66,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <form method="POST" enctype="multipart/form-data">
             <div class="row g-3">
                 <div class="col-md-6">
-                    <label class="form-label">បាកូដ (Barcode)</label>
+                    <label class="form-label small fw-bold">បាកូដ (Barcode)</label>
                     <input type="text" name="barcode" class="form-control" value="<?= e($product['barcode']) ?>">
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">ប្រភេទ (Category)</label>
+                    <label class="form-label small fw-bold">ប្រភេទ (Category)</label>
                     <select name="category_id" class="form-select">
                         <option value="">-- ជ្រើសរើសប្រភេទ --</option>
                         <?php foreach ($categories as $c): ?>
@@ -78,28 +78,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="col-12">
-                    <label class="form-label">ឈ្មោះទំនិញ *</label>
+                <div class="col-md-8">
+                    <label class="form-label small fw-bold">ឈ្មោះទំនិញ *</label>
                     <input type="text" name="name" class="form-control" required value="<?= e($product['name']) ?>">
                 </div>
+                <div class="col-md-4">
+                    <label class="form-label small fw-bold">ឯកតា (Unit) *</label>
+                    <input list="unit-options" name="unit" class="form-control" required value="<?= e($product['unit'] ?? 'ដើម') ?>">
+                    <datalist id="unit-options">
+                        <option value="ដើម">ដើម</option>
+                        <option value="បាវ">បាវ</option>
+                        <option value="គីឡូ">គីឡូ</option>
+                        <option value="ធុង">ធុង</option>
+                        <option value="ប្រអប់">ប្រអប់</option>
+                        <option value="សន្លឹក">សន្លឹក</option>
+                        <option value="ដុំ">ដុំ</option>
+                        <option value="ម៉ែត្រ">ម៉ែត្រ</option>
+                        <option value="ឡាន">ឡាន</option>
+                    </datalist>
+                </div>
                 <div class="col-md-6">
-                    <label class="form-label">តម្លៃទិញចូល ($) *</label>
+                    <label class="form-label small fw-bold">តម្លៃទិញចូល ($) *</label>
                     <input type="number" step="0.01" name="cost_price" class="form-control" required value="<?= $product['cost_price'] ?>">
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">តម្លៃលក់ចេញ ($) *</label>
+                    <label class="form-label small fw-bold">តម្លៃលក់ចេញ ($) *</label>
                     <input type="number" step="0.01" name="sale_price" class="form-control" required value="<?= $product['sale_price'] ?>">
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">ចំនួនស្តុកបច្ចុប្បន្ន</label>
+                    <label class="form-label small fw-bold">ចំនួនស្តុកបច្ចុប្បន្ន</label>
                     <input type="number" name="current_stock" class="form-control" value="<?= $product['current_stock'] ?>">
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">កម្រិតជូនដំណឹងជិតអស់ស្តុក</label>
+                    <label class="form-label small fw-bold">កម្រិតជូនដំណឹងជិតអស់ស្តុក</label>
                     <input type="number" name="min_stock_alert" class="form-control" value="<?= $product['min_stock_alert'] ?>">
                 </div>
                 <div class="col-12">
-                    <label class="form-label">រូបភាពផលិតផល (ទុកទំនេរបើមិនចង់ដូរ)</label>
+                    <label class="form-label small fw-bold">រូបភាពផលិតផល</label>
                     <input type="file" name="image" class="form-control" accept="image/*">
                     <?php if ($product['image_path']): ?>
                         <div class="mt-2"><img src="/<?= e($product['image_path']) ?>" class="rounded" width="70"></div>
