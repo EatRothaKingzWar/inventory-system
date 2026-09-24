@@ -1,13 +1,13 @@
 ﻿<?php
 // =========================================================================
 // ឯកសារ: modules/sales/create.php
-// គោលបំណង: ផ្ទាំងលក់ទំនិញ (POS) - អាចវាយចំនួន Qty ដោយដៃ និងស្កេនបាកូដ
+// គោលបំណង: ផ្ទាំងលក់ POS + Filter តាមប្រភេទ + បង្ហាញឈ្មោះប្រភេទការពារច្រឡំ
 // =========================================================================
 
 $page_title = 'កន្លែងលក់ទំនិញផ្ទាល់ (POS)';
 require_once __DIR__ . '/../../includes/header.php';
 
-define('EXCHANGE_RATE', 4100); // 1$ = 4,100 ៛
+define('EXCHANGE_RATE', 4100);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['checkout'])) {
     $cart = json_decode($_POST['cart_data'] ?? '[]', true);
@@ -68,30 +68,66 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['checkout'])) {
     }
 }
 
-$products = $pdo->query("SELECT id, barcode, name, sale_price, current_stock FROM products WHERE current_stock > 0 ORDER BY name ASC")->fetchAll();
+// ១. ទាញបញ្ជី Categories ទាំងអស់មកធ្វើប៊ូតុង Filter
+$categories = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC")->fetchAll();
+
+// ២. ទាញទំនិញភ្ជាប់ជាមួយឈ្មោះប្រភេទ (c.name)
+$sql_products = "SELECT p.id, p.barcode, p.name, p.sale_price, p.current_stock, p.category_id, c.name AS category_name 
+                 FROM products p 
+                 LEFT JOIN categories c ON p.category_id = c.id 
+                 WHERE p.current_stock > 0 
+                 ORDER BY p.name ASC";
+$products = $pdo->query($sql_products)->fetchAll();
 ?>
 
 <div class="row g-3">
-    <!-- ផ្នែកខាងឆ្វេង៖ ជ្រើសរើសទំនិញ -->
+    <!-- ផ្នែកខាងឆ្វេង៖ ជ្រើសរើសទំនិញ & Filter -->
     <div class="col-md-7">
         <div class="card border-0 shadow-sm rounded-3 p-3 h-100">
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <h6 class="fw-bold mb-0 text-primary"><i class="fa fa-boxes me-2"></i>ទំនិញក្នុងហាង</h6>
                 <small class="text-muted">អត្រាប្តូរប្រាក់: <strong>1$ = <?= number_format(EXCHANGE_RATE) ?> ៛</strong></small>
             </div>
-            
-            <div class="input-group mb-3">
-                <span class="input-group-text bg-white"><i class="fa fa-barcode"></i></span>
-                <input type="text" id="barcode-input" class="form-control" placeholder="ស្កេនបាកូដ ឬវាយឈ្មោះទំនិញ (ចុច Enter ដើម្បីបញ្ចូល)..." autofocus>
+
+            <!-- ប៊ូតុង Filter តាមប្រភេទមុខទំនិញ -->
+            <div class="d-flex gap-1 mb-2 overflow-x-auto pb-1" style="white-space: nowrap;">
+                <button type="button" class="btn btn-sm btn-primary category-btn active px-3" onclick="filterCategory('all', this)">
+                    <i class="fa fa-th-large me-1"></i>ទាំងអស់
+                </button>
+                <?php foreach ($categories as $cat): ?>
+                    <button type="button" class="btn btn-sm btn-outline-secondary category-btn px-3" onclick="filterCategory(<?= $cat['id'] ?>, this)">
+                        <?= e($cat['name']) ?>
+                    </button>
+                <?php endforeach; ?>
             </div>
             
-            <div class="row row-cols-2 row-cols-lg-3 g-2" style="max-height: 520px; overflow-y: auto;">
+            <!-- ប្រអប់ស្កេនបាកូដ / ស្វែងរក -->
+            <div class="input-group mb-3">
+                <span class="input-group-text bg-white"><i class="fa fa-barcode"></i></span>
+                <input type="text" id="barcode-input" class="form-control" placeholder="ស្កេនបាកូដ ឬវាយឈ្មោះទំនិញ..." autofocus>
+            </div>
+            
+            <!-- បញ្ជីទំនិញជា Cards -->
+            <div class="row row-cols-2 row-cols-lg-3 g-2" style="max-height: 500px; overflow-y: auto;">
                 <?php foreach ($products as $p): ?>
-                    <div class="col product-item" data-id="<?= $p['id'] ?>" data-name="<?= strtolower(e($p['name'])) ?>" data-barcode="<?= e($p['barcode']) ?>">
+                    <div class="col product-item" 
+                         data-id="<?= $p['id'] ?>" 
+                         data-name="<?= strtolower(e($p['name'])) ?>" 
+                         data-barcode="<?= e($p['barcode']) ?>"
+                         data-category-id="<?= $p['category_id'] ?: 0 ?>">
+                        
                         <div class="card p-2 h-100 border text-center shadow-sm product-card" 
-                             style="cursor: pointer;"
-                             onclick="addItemToCart(<?= $p['id'] ?>, '<?= addslashes(e($p['name'])) ?>', <?= $p['sale_price'] ?>, <?= $p['current_stock'] ?>)">
-                            <div class="fw-bold text-dark text-truncate"><?= e($p['name']) ?></div>
+                             style="cursor: pointer; transition: 0.2s;"
+                             onclick="addItemToCart(<?= $p['id'] ?>, '<?= addslashes(e($p['name'])) ?>', <?= $p['sale_price'] ?>, <?= $p['current_stock'] ?>, '<?= addslashes(e($p['category_name'] ?: 'ទូទៅ')) ?>')">
+                            
+                            <!-- បង្ហាញស្លាកឈ្មោះប្រភេទខាងលើ -->
+                            <div class="mb-1">
+                                <span class="badge bg-secondary-subtle text-secondary border small px-2 py-1">
+                                    <?= e($p['category_name'] ?: 'ទូទៅ') ?>
+                                </span>
+                            </div>
+
+                            <div class="fw-bold text-dark text-truncate" title="<?= e($p['name']) ?>"><?= e($p['name']) ?></div>
                             <div class="text-success fw-bold fs-5 mb-0">$<?= number_format($p['sale_price'], 2) ?></div>
                             <small class="text-danger fw-bold"><?= number_format($p['sale_price'] * EXCHANGE_RATE) ?> ៛</small>
                             <div class="mt-1"><span class="badge bg-light text-secondary border">ស្តុក: <?= $p['current_stock'] ?></span></div>
@@ -111,15 +147,15 @@ $products = $pdo->query("SELECT id, barcode, name, sale_price, current_stock FRO
                 <table class="table table-sm align-middle">
                     <thead class="table-light">
                         <tr>
-                            <th>ទំនិញ</th>
-                            <th width="115" class="text-center">ចំនួន (Qty)</th>
+                            <th>ទំនិញ [ប្រភេទ]</th>
+                            <th width="110" class="text-center">ចំនួន</th>
                             <th>តម្លៃ</th>
                             <th>សរុប</th>
                             <th width="25"></th>
                         </tr>
                     </thead>
                     <tbody id="cart-list">
-                        <tr><td colspan="5" class="text-center text-muted py-4">សូមចុចលើទំនិញខាងឆ្វេងដើម្បីលក់</td></tr>
+                        <tr><td colspan="5" class="text-center text-muted py-4">សូមជ្រើសរើសទំនិញខាងឆ្វេងដើម្បីលក់</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -148,7 +184,6 @@ $products = $pdo->query("SELECT id, barcode, name, sale_price, current_stock FRO
                     </div>
                 </div>
 
-                <!-- គណនាប្រាក់អាប់ -->
                 <div class="mb-3">
                     <label class="form-label small fw-bold text-secondary mb-1">ប្រាក់ទទួលពីភ្ញៀវ ($)</label>
                     <div class="input-group input-group-sm mb-2">
@@ -172,8 +207,9 @@ $products = $pdo->query("SELECT id, barcode, name, sale_price, current_stock FRO
 const RATE = <?= EXCHANGE_RATE ?>;
 const allProducts = <?= json_encode($products) ?>;
 let cart = [];
+let currentCategory = 'all';
 
-function addItemToCart(id, name, price, maxStock) {
+function addItemToCart(id, name, price, maxStock, categoryName) {
     let item = cart.find(x => x.id === id);
     if (item) {
         if (item.qty < maxStock) {
@@ -182,7 +218,7 @@ function addItemToCart(id, name, price, maxStock) {
             alert('ទំនិញនេះមានក្នុងស្តុកតែ ' + maxStock + ' ប៉ុណ្ណោះ!');
         }
     } else {
-        cart.push({ id: id, name: name, price: parseFloat(price), qty: 1, maxStock: maxStock });
+        cart.push({ id: id, name: name, price: parseFloat(price), qty: 1, maxStock: maxStock, category: categoryName });
     }
     renderCartView();
 }
@@ -200,7 +236,6 @@ function changeQty(id, delta) {
     renderCartView();
 }
 
-// អនុគមន៍អនុញ្ញាតឱ្យវាយចំនួន (Typing Qty) ផ្ទាល់ដៃ
 function setTypedQty(id, value) {
     let item = cart.find(x => x.id === id);
     if (!item) return;
@@ -218,7 +253,7 @@ function setTypedQty(id, value) {
 function renderCartView() {
     const tbody = document.getElementById('cart-list');
     if (cart.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">សូមចុចលើទំនិញខាងឆ្វេងដើម្បីលក់</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">សូមជ្រើសរើសទំនិញខាងឆ្វេងដើម្បីលក់</td></tr>';
         document.getElementById('subtotal-val').innerText = '.00';
         document.getElementById('grand-total-usd').innerText = '.00';
         document.getElementById('grand-total-khr').innerText = '0 ៛';
@@ -233,9 +268,12 @@ function renderCartView() {
         let total = item.price * item.qty;
         subtotal += total;
         html += '<tr>' +
-            '<td class="small fw-bold text-truncate" style="max-width:110px;">' + item.name + '</td>' +
             '<td>' +
-                '<div class="input-group input-group-sm" style="width: 105px;">' +
+                '<div class="small fw-bold text-truncate" style="max-width:115px;">' + item.name + '</div>' +
+                '<span class="badge bg-light text-muted border" style="font-size:10px;">' + item.category + '</span>' +
+            '</td>' +
+            '<td>' +
+                '<div class="input-group input-group-sm" style="width: 100px;">' +
                     '<button type="button" class="btn btn-outline-secondary px-2" onclick="changeQty(' + item.id + ', -1)">-</button>' +
                     '<input type="number" min="1" max="' + item.maxStock + '" value="' + item.qty + '" ' +
                            'class="form-control text-center p-0 fw-bold" ' +
@@ -288,6 +326,38 @@ function calcChange(grandUSD) {
     }
 }
 
+// មុខងារ Filter តាម Category
+function filterCategory(catId, btn) {
+    currentCategory = catId;
+    document.querySelectorAll('.category-btn').forEach(b => {
+        b.classList.remove('btn-primary', 'active');
+        b.classList.add('btn-outline-secondary');
+    });
+    btn.classList.remove('btn-outline-secondary');
+    btn.classList.add('btn-primary', 'active');
+    applyFilters();
+}
+
+function applyFilters() {
+    let q = document.getElementById('barcode-input').value.toLowerCase().trim();
+    document.querySelectorAll('.product-item').forEach(function(el) {
+        let name = el.getAttribute('data-name');
+        let barcode = el.getAttribute('data-barcode');
+        let catId = el.getAttribute('data-category-id');
+
+        let matchSearch = name.includes(q) || barcode.includes(q);
+        let matchCat = (currentCategory === 'all' || catId == currentCategory);
+
+        if (matchSearch && matchCat) {
+            el.style.display = '';
+        } else {
+            el.style.display = 'none';
+        }
+    });
+}
+
+document.getElementById('barcode-input').addEventListener('input', applyFilters);
+
 // ស្កេនបាកូដ USB
 document.getElementById('barcode-input').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
@@ -297,26 +367,13 @@ document.getElementById('barcode-input').addEventListener('keydown', function(e)
 
         let found = allProducts.find(p => (p.barcode && p.barcode.toLowerCase() === val) || p.name.toLowerCase() === val);
         if (found) {
-            addItemToCart(found.id, found.name, found.sale_price, found.current_stock);
+            addItemToCart(found.id, found.name, found.sale_price, found.current_stock, found.category_name || 'ទូទៅ');
             this.value = '';
+            applyFilters();
         } else {
             alert('រកមិនឃើញទំនិញដែលមានបាកូដ ' + val + ' នេះទេ!');
         }
     }
-});
-
-// ស្វែងរកតាមឈ្មោះ
-document.getElementById('barcode-input').addEventListener('input', function(e) {
-    let q = e.target.value.toLowerCase().trim();
-    document.querySelectorAll('.product-item').forEach(function(el) {
-        let name = el.getAttribute('data-name');
-        let barcode = el.getAttribute('data-barcode');
-        if (name.includes(q) || barcode.includes(q)) {
-            el.style.display = '';
-        } else {
-            el.style.display = 'none';
-        }
-    });
 });
 </script>
 

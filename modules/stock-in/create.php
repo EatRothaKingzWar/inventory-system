@@ -1,14 +1,20 @@
 ﻿<?php
 // =========================================================================
 // ឯកសារ: modules/stock-in/create.php
-// គោលបំណង: នាំចូលទំនិញក្នុងស្តុក (Stock-In)
+// គោលបំណង: នាំចូលស្តុក + បង្ហាញ [ឈ្មោះប្រភេទ] ក្នុងបញ្ជីជ្រើសរើសទំនិញ
 // =========================================================================
 
 $page_title = 'នាំចូលស្តុក (Stock In)';
 require_once __DIR__ . '/../../includes/header.php';
 
 $suppliers = $pdo->query("SELECT id, name FROM suppliers ORDER BY name ASC")->fetchAll();
-$products  = $pdo->query("SELECT id, name, barcode, cost_price, current_stock FROM products ORDER BY name ASC")->fetchAll();
+
+// ទាញទំនិញភ្ជាប់ជាមួយឈ្មោះ Category (c.name)
+$sql_products = "SELECT p.id, p.name, p.barcode, p.cost_price, p.current_stock, c.name AS category_name 
+                 FROM products p 
+                 LEFT JOIN categories c ON p.category_id = c.id 
+                 ORDER BY p.name ASC";
+$products = $pdo->query($sql_products)->fetchAll();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $supplier_id  = $_POST['supplier_id'] ?: null;
@@ -89,7 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <table class="table table-bordered align-middle" id="stock-in-table">
                 <thead class="table-light">
                     <tr>
-                        <th>ទំនិញ</th>
+                        <th>ទំនិញ [ប្រភេទ]</th>
                         <th width="120">ចំនួននាំចូល</th>
                         <th width="150">តម្លៃទិញ ($)</th>
                         <th width="50"></th>
@@ -102,7 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <option value="">-- ជ្រើសរើសទំនិញ --</option>
                                 <?php foreach ($products as $p): ?>
                                     <option value="<?= $p['id'] ?>" data-cost="<?= $p['cost_price'] ?>">
-                                        <?= e($p['name']) ?> (នៅសល់: <?= $p['current_stock'] ?>)
+                                        <?= e($p['name']) ?> [<?= e($p['category_name'] ?: 'ទូទៅ') ?>] (នៅសល់: <?= $p['current_stock'] ?>)
                                     </option>
                                 <?php endforeach; ?>
                             </select>
