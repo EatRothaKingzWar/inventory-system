@@ -1,4 +1,4 @@
-﻿        </div> <!-- End p-4 -->
+        </div> <!-- End p-4 -->
         <footer class="bg-white text-center py-2 text-muted small border-top mt-auto">
             &copy; <?= date('Y') ?> Inventory Management System.
         </footer>

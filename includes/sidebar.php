@@ -1,4 +1,4 @@
-﻿<div class="sidebar p-3">
+<div class="sidebar p-3">
     <h4 class="text-white fw-bold mb-4 text-center"><i class="fa fa-boxes-stacked me-2"></i>Stock POS</h4>
     <nav>
         <a href="/index.php"><i class="fa fa-tachometer-alt me-2"></i> ផ្ទាំងគ្រប់គ្រង</a>

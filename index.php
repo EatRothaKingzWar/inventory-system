@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 // index.php (Dashboard)
 $page_title = 'ផ្ទាំងគ្រប់គ្រងទូទៅ (Dashboard)';
 require_once __DIR__ . '/includes/header.php';
