@@ -1,26 +1,30 @@
-<?php
+﻿<?php
 // =========================================================================
 // ឯកសារ: modules/sales/index.php
-// គោលបំណង: បង្ហាញបញ្ជីប្រវត្តិវិក្កយបត្រទាំងអស់ និងស្វែងរកតាមកាលបរិច្ឆេទ
+// គោលបំណង: បង្ហាញបញ្ជីវិក្កយបត្រលក់ ភ្ជាប់ជាមួយមុខទំនិញ ឈ្មោះមេការ និងស្ថានភាពជំពាក់
 // =========================================================================
 
 $page_title = 'បញ្ជីវិក្កយបត្រលក់';
 require_once __DIR__ . '/../../includes/header.php';
 
-// ១. ទទួលចន្លោះកាលបរិច្ឆេទពី Filter
-$from_date = $_GET['from_date'] ?? date('Y-m-01'); // ថ្ងៃទី ១ នៃខែបច្ចុប្បន្ន
+$from_date = $_GET['from_date'] ?? date('Y-m-01');
 $to_date   = $_GET['to_date'] ?? date('Y-m-d');
 
-$sql = "SELECT s.*, u.full_name AS cashier_name 
+// Query ទាញទិន្នន័យវិក្កយបត្រ ភ្ជាប់ជាមួយមុខទំនិញដែលបានទិញ (STRING_AGG)
+$sql = "SELECT 
+            s.*, 
+            u.full_name AS cashier_name,
+            STRING_AGG(p.name || ' (x' || si.quantity || ' ' || COALESCE(p.unit, 'ដើម') || ')', ', ') AS product_summary
         FROM sales s 
         LEFT JOIN users u ON s.user_id = u.id 
+        LEFT JOIN sale_items si ON s.id = si.sale_id
+        LEFT JOIN products p ON si.product_id = p.id
         WHERE DATE(s.created_at) BETWEEN ? AND ? 
+        GROUP BY s.id, u.full_name
         ORDER BY s.id DESC";
 
-$stmt = db_query($pdo, $sql, [$from_date, $to_date]);
-$sales = $stmt->fetchAll();
+$sales = db_query($pdo, $sql, [$from_date, $to_date])->fetchAll();
 
-// គណនាផលបូកសរុបក្នុងចន្លោះកាលបរិច្ឆេទនោះ
 $total_revenue = 0;
 foreach ($sales as $s) {
     $total_revenue += $s['total_amount'];
@@ -32,11 +36,11 @@ foreach ($sales as $s) {
         <!-- របារ Filter តាមកាលបរិច្ឆេទ -->
         <form method="GET" class="row g-2 align-items-end mb-4">
             <div class="col-md-3">
-                <label class="form-label small">ចាប់ពីថ្ងៃ</label>
+                <label class="form-label small fw-bold">ចាប់ពីថ្ងៃ</label>
                 <input type="date" name="from_date" class="form-control form-control-sm" value="<?= e($from_date) ?>">
             </div>
             <div class="col-md-3">
-                <label class="form-label small">ដល់ថ្ងៃ</label>
+                <label class="form-label small fw-bold">ដល់ថ្ងៃ</label>
                 <input type="date" name="to_date" class="form-control form-control-sm" value="<?= e($to_date) ?>">
             </div>
             <div class="col-md-2">
@@ -44,7 +48,7 @@ foreach ($sales as $s) {
             </div>
             <div class="col-md-4 text-md-end">
                 <span class="text-muted small d-block">ចំណូលសរុបក្នុងចន្លោះនេះ:</span>
-                <span class="fs-4 fw-bold text-success"><?= format_money($total_revenue) ?></span>
+                <span class="fs-4 fw-bold text-success">$<?= number_format($total_revenue, 2) ?></span>
             </div>
         </form>
 
@@ -54,29 +58,66 @@ foreach ($sales as $s) {
                     <tr>
                         <th>លេខវិក្កយបត្រ</th>
                         <th>កាលបរិច្ឆេទ</th>
-                        <th>អ្នកគិតលុយ</th>
-                        <th>វិធីទូទាត់</th>
-                        <th>សរុបរង</th>
-                        <th>បញ្ចុះតម្លៃ</th>
-                        <th>ទឹកប្រាក់ជាក់ស្តែង</th>
-                        <th class="text-center">សកម្មភាព</th>
+                        <th>មេការ / អតិថិជន</th>
+                        <th width="32%">មុខទំនិញដែលបានទិញ (ចំនួន & ឯកតា)</th>
+                        <th>ស្ថានភាព</th>
+                        <th class="text-end">ទឹកប្រាក់ជាក់ស្តែង</th>
+                        <th class="text-center" width="110">សកម្មភាព</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if (empty($sales)): ?>
-                        <tr><td colspan="8" class="text-center text-muted py-4">មិនមានទិន្នន័យការលក់ក្នុងចន្លោះកាលបរិច្ឆេទនេះទេ</td></tr>
+                        <tr><td colspan="7" class="text-center text-muted py-4">មិនមានទិន្នន័យការលក់ក្នុងចន្លោះកាលបរិច្ឆេទនេះទេ</td></tr>
                     <?php else: foreach ($sales as $row): ?>
                         <tr>
                             <td class="fw-bold"><code><?= e($row['invoice_no']) ?></code></td>
-                            <td><?= date('d/m/Y H:i', strtotime($row['created_at'])) ?></td>
-                            <td><?= e($row['cashier_name'] ?: 'N/A') ?></td>
-                            <td><span class="badge bg-light text-dark border text-uppercase"><?= e($row['payment_method']) ?></span></td>
-                            <td><?= format_money($row['subtotal']) ?></td>
-                            <td class="text-danger">-<?= format_money($row['discount']) ?></td>
-                            <td class="fw-bold text-success"><?= format_money($row['total_amount']) ?></td>
+                            <td class="small text-muted"><?= date('d/m/Y H:i', strtotime($row['created_at'])) ?></td>
+                            
+                            <!-- ឈ្មោះមេការ / អតិថិជន -->
+                            <td>
+                                <div class="fw-bold text-dark"><?= e($row['customer_name'] ?: 'អតិថិជនទូទៅ') ?></div>
+                                <?php if ($row['customer_phone']): ?>
+                                    <small class="text-muted"><i class="fa fa-phone me-1"></i><?= e($row['customer_phone']) ?></small>
+                                <?php endif; ?>
+                            </td>
+
+                            <!-- បង្ហាញមុខទំនិញដែលបានទិញ -->
+                            <td>
+                                <?php 
+                                if ($row['product_summary']): 
+                                    $items = explode(', ', $row['product_summary']);
+                                    foreach ($items as $it): ?>
+                                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle me-1 mb-1 fs-6 fw-normal">
+                                            <i class="fa fa-box me-1"></i><?= e($it) ?>
+                                        </span>
+                                    <?php endforeach; 
+                                else: ?>
+                                    <span class="text-muted small">គ្មានទំនិញ</span>
+                                <?php endif; ?>
+                            </td>
+
+                            <!-- ស្ថានភាពទូទាត់ -->
+                            <td>
+                                <?php if (($row['payment_status'] ?? 'paid') === 'unpaid'): ?>
+                                    <span class="badge bg-danger">⏳ ជំពាក់</span>
+                                <?php else: ?>
+                                    <span class="badge bg-success">✅ បង់ដាច់</span>
+                                <?php endif; ?>
+                            </td>
+
+                            <!-- ទឹកប្រាក់ជាក់ស្តែង -->
+                            <td class="text-end fw-bold text-success fs-6">
+                                $<?= number_format($row['total_amount'], 2) ?>
+                                <div class="small text-muted fw-normal"><?= number_format($row['total_amount'] * 4100) ?> ៛</div>
+                            </td>
+
+                            <!-- ប៊ូតុងសកម្មភាព -->
                             <td class="text-center">
-                                <a href="invoice.php?id=<?= $row['id'] ?>" class="btn btn-sm btn-outline-info" title="មើលលម្អិត"><i class="fa fa-eye"></i></a>
-                                <a href="print.php?id=<?= $row['id'] ?>" target="_blank" class="btn btn-sm btn-outline-secondary" title="ព្រីន"><i class="fa fa-print"></i></a>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="invoice.php?id=<?= $row['id'] ?>" class="btn btn-outline-info" title="មើលលម្អិត"><i class="fa fa-eye"></i></a>
+                                    <a href="print.php?id=<?= $row['id'] ?>" target="_blank" class="btn btn-outline-secondary" title="ព្រីនតូច (80mm)"><i class="fa fa-receipt"></i></a>
+                                    <a href="print_a4.php?id=<?= $row['id'] ?>" target="_blank" class="btn btn-outline-primary" title="ព្រីនប័ណ្ណដឹកជញ្ជូន A4"><i class="fa fa-file-invoice"></i></a>
+                                </div>
                             </td>
                         </tr>
                     <?php endforeach; endif; ?>
