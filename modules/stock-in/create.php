@@ -1,17 +1,15 @@
-<?php
+﻿<?php
 // =========================================================================
 // ឯកសារ: modules/stock-in/create.php
-// គោលបំណង: នាំចូលទំនិញក្នុងស្តុក (Stock-In) និងបូកបន្ថែមចំនួនស្តុកស្វ័យប្រវត្តិ
+// គោលបំណង: នាំចូលទំនិញក្នុងស្តុក (Stock-In)
 // =========================================================================
 
 $page_title = 'នាំចូលស្តុក (Stock In)';
 require_once __DIR__ . '/../../includes/header.php';
 
-// ១. ទាញបញ្ជីអ្នកផ្គត់ផ្គង់ និងផលិតផល
 $suppliers = $pdo->query("SELECT id, name FROM suppliers ORDER BY name ASC")->fetchAll();
 $products  = $pdo->query("SELECT id, name, barcode, cost_price, current_stock FROM products ORDER BY name ASC")->fetchAll();
 
-// ២. ដំណើរការរក្សាទុកទិន្នន័យនាំចូលស្តុក
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $supplier_id  = $_POST['supplier_id'] ?: null;
     $reference_no = trim($_POST['reference_no'] ?? '') ?: 'PO-' . time();
@@ -24,7 +22,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         set_flash('danger', 'សូមជ្រើសរើសទំនិញយ៉ាងហោចណាស់មួយមុខ!');
     } else {
         try {
-            // ចាប់ផ្តើម Transaction
             $pdo->beginTransaction();
 
             $total_cost = 0;
@@ -34,34 +31,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $total_cost += ($qty * $cost);
             }
 
-            // បញ្ចូលទិន្នន័យមេក្នុង stock_ins
             $stmt = $pdo->prepare("INSERT INTO stock_ins (supplier_id, reference_no, user_id, total_cost) VALUES (?, ?, ?, ?) RETURNING id");
             $stmt->execute([$supplier_id, $reference_no, $user_id, $total_cost]);
             $stock_in_id = $stmt->fetchColumn();
 
-            // បញ្ចូលមុខទំនិញនីមួយៗ និងបូកស្តុកបន្ថែម
             foreach ($product_ids as $i => $pid) {
                 $qty  = (int)$quantities[$i];
                 $cost = (float)$cost_prices[$i];
 
                 if ($qty <= 0) continue;
 
-                // បញ្ចូលក្នុង stock_in_items
                 $stmt_item = $pdo->prepare("INSERT INTO stock_in_items (stock_in_id, product_id, quantity, cost_price) VALUES (?, ?, ?, ?)");
                 $stmt_item->execute([$stock_in_id, $pid, $qty, $cost]);
 
-                // បូកបន្ថែមចំនួនស្តុក និង Update តម្លៃថ្លៃដើមចុងក្រោយ
                 $prod = db_query($pdo, "SELECT current_stock FROM products WHERE id = ? FOR UPDATE", [$pid])->fetch();
                 $new_balance = $prod['current_stock'] + $qty;
 
                 db_query($pdo, "UPDATE products SET current_stock = ?, cost_price = ? WHERE id = ?", [$new_balance, $cost, $pid]);
 
-                // កត់ត្រាក្នុង Movement Log
-                record_stock_movement($pdo, $pid, 'IN', $stock_in_id, $qty, $new_balance, "នាំចូលតាមប័ណ្ណ #{}");
+                record_stock_movement($pdo, $pid, 'IN', $stock_in_id, $qty, $new_balance, "នាំចូលតាមប័ណ្ណ #" . $reference_no);
             }
 
             $pdo->commit();
-            set_flash('success', "នាំចូលស្តុកជោគជ័យ! ប័ណ្ណលេខ: {}");
+            set_flash('success', "នាំចូលស្តុកជោគជ័យ! ប័ណ្ណលេខ: " . $reference_no);
             redirect('/modules/stock-in/index.php');
 
         } catch (Exception $e) {
@@ -94,7 +86,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
             </div>
 
-            <!-- តារាងទំនិញដែលត្រូវនាំចូល -->
             <table class="table table-bordered align-middle" id="stock-in-table">
                 <thead class="table-light">
                     <tr>
