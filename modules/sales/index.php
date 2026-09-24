@@ -1,16 +1,25 @@
 ﻿<?php
 // =========================================================================
 // ឯកសារ: modules/sales/index.php
-// គោលបំណង: បង្ហាញបញ្ជីវិក្កយបត្រលក់ ភ្ជាប់ជាមួយមុខទំនិញ ឈ្មោះមេការ និងស្ថានភាពជំពាក់
+// គោលបំណង: បញ្ជីវិក្កយបត្រ + ប៊ូតុងកត់ត្រាពេលមេការមកសងលុយ (Mark as Paid)
 // =========================================================================
 
 $page_title = 'បញ្ជីវិក្កយបត្រលក់';
 require_once __DIR__ . '/../../includes/header.php';
 
+// ១. ដំណើរការពេលចុចប៊ូតុង «សងលុយ»
+if (isset($_GET['mark_paid'])) {
+    $settle_id = (int)$_GET['mark_paid'];
+    if ($settle_id > 0) {
+        db_query($pdo, "UPDATE sales SET payment_status = 'paid' WHERE id = ?", [$settle_id]);
+        set_flash('success', 'បានកត់ត្រាការទូទាត់លុយសងរួចរាល់ដោយជោគជ័យ!');
+        redirect('/modules/sales/index.php');
+    }
+}
+
 $from_date = $_GET['from_date'] ?? date('Y-m-01');
 $to_date   = $_GET['to_date'] ?? date('Y-m-d');
 
-// Query ទាញទិន្នន័យវិក្កយបត្រ ភ្ជាប់ជាមួយមុខទំនិញដែលបានទិញ (STRING_AGG)
 $sql = "SELECT 
             s.*, 
             u.full_name AS cashier_name,
@@ -33,7 +42,6 @@ foreach ($sales as $s) {
 
 <div class="card border-0 shadow-sm rounded-3">
     <div class="card-body p-4">
-        <!-- របារ Filter តាមកាលបរិច្ឆេទ -->
         <form method="GET" class="row g-2 align-items-end mb-4">
             <div class="col-md-3">
                 <label class="form-label small fw-bold">ចាប់ពីថ្ងៃ</label>
@@ -60,7 +68,7 @@ foreach ($sales as $s) {
                         <th>កាលបរិច្ឆេទ</th>
                         <th>មេការ / អតិថិជន</th>
                         <th width="32%">មុខទំនិញដែលបានទិញ (ចំនួន & ឯកតា)</th>
-                        <th>ស្ថានភាព</th>
+                        <th class="text-center" width="110">ស្ថានភាព</th>
                         <th class="text-end">ទឹកប្រាក់ជាក់ស្តែង</th>
                         <th class="text-center" width="110">សកម្មភាព</th>
                     </tr>
@@ -73,7 +81,6 @@ foreach ($sales as $s) {
                             <td class="fw-bold"><code><?= e($row['invoice_no']) ?></code></td>
                             <td class="small text-muted"><?= date('d/m/Y H:i', strtotime($row['created_at'])) ?></td>
                             
-                            <!-- ឈ្មោះមេការ / អតិថិជន -->
                             <td>
                                 <div class="fw-bold text-dark"><?= e($row['customer_name'] ?: 'អតិថិជនទូទៅ') ?></div>
                                 <?php if ($row['customer_phone']): ?>
@@ -81,7 +88,6 @@ foreach ($sales as $s) {
                                 <?php endif; ?>
                             </td>
 
-                            <!-- បង្ហាញមុខទំនិញដែលបានទិញ -->
                             <td>
                                 <?php 
                                 if ($row['product_summary']): 
@@ -96,22 +102,27 @@ foreach ($sales as $s) {
                                 <?php endif; ?>
                             </td>
 
-                            <!-- ស្ថានភាពទូទាត់ -->
-                            <td>
+                            <!-- ស្ថានភាពទូទាត់ + ប៊ូតុងសងលុយ -->
+                            <td class="text-center">
                                 <?php if (($row['payment_status'] ?? 'paid') === 'unpaid'): ?>
-                                    <span class="badge bg-danger">⏳ ជំពាក់</span>
+                                    <span class="badge bg-danger mb-1 d-block">⏳ ជំពាក់</span>
+                                    <a href="index.php?mark_paid=<?= $row['id'] ?>" 
+                                       class="btn btn-sm btn-outline-success py-0 px-2 fw-bold" 
+                                       style="font-size:11px;" 
+                                       onclick="return confirm('តើអ្នកពិតជាបានទទួលលុយសងពីមេការនេះគ្រប់ចំនួនហើយមែនទេ?')"
+                                       title="ចុចដើម្បីកត់ត្រាថាបានសងលុយ">
+                                        <i class="fa fa-hand-holding-dollar me-1"></i>សងលុយ
+                                    </a>
                                 <?php else: ?>
                                     <span class="badge bg-success">✅ បង់ដាច់</span>
                                 <?php endif; ?>
                             </td>
 
-                            <!-- ទឹកប្រាក់ជាក់ស្តែង -->
                             <td class="text-end fw-bold text-success fs-6">
                                 $<?= number_format($row['total_amount'], 2) ?>
                                 <div class="small text-muted fw-normal"><?= number_format($row['total_amount'] * 4100) ?> ៛</div>
                             </td>
 
-                            <!-- ប៊ូតុងសកម្មភាព -->
                             <td class="text-center">
                                 <div class="btn-group btn-group-sm">
                                     <a href="invoice.php?id=<?= $row['id'] ?>" class="btn btn-outline-info" title="មើលលម្អិត"><i class="fa fa-eye"></i></a>
