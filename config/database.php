@@ -1,6 +1,7 @@
 ﻿<?php
 // config/database.php
-// ឯកសារតភ្ជាប់ Database PostgreSQL សម្រាប់ទាំង Local និង Render
+// កំណត់ Timezone កម្ពុជា (Asia/Phnom_Penh)
+date_default_timezone_set('Asia/Phnom_Penh');
 
 $database_url = getenv('DATABASE_URL');
 
@@ -28,7 +29,10 @@ try {
         PDO::ATTR_EMULATE_PREPARES   => false,
     ]);
 
-    // បង្កើត Column បន្ថែមដោយស្វ័យប្រវត្តិ (Auto-Migration) ការពារកុំឱ្យ Error
+    // កំណត់ Timezone ក្នុង PostgreSQL ឱ្យស្គាល់ Asia/Phnom_Penh
+    $pdo->exec("SET timezone = 'Asia/Phnom_Penh'");
+
+    // Auto-migrate Columns
     $pdo->exec("ALTER TABLE products ADD COLUMN IF NOT EXISTS unit VARCHAR(30) DEFAULT 'ដើម'");
     $pdo->exec("ALTER TABLE sales ADD COLUMN IF NOT EXISTS customer_name VARCHAR(100)");
     $pdo->exec("ALTER TABLE sales ADD COLUMN IF NOT EXISTS customer_phone VARCHAR(30)");
