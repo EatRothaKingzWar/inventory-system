@@ -1,7 +1,7 @@
 ﻿<?php
 // =========================================================================
 // ឯកសារ: modules/sales/create.php
-// គោលបំណង: ផ្ទាំងលក់ទំនិញផ្ទាល់នៅផ្ទះ (POS) + គាំទ្រ Barcode Scanner + គណនាប្រាក់អាប់
+// គោលបំណង: ផ្ទាំងលក់ទំនិញ (POS) - អាចវាយចំនួន Qty ដោយដៃ និងស្កេនបាកូដ
 // =========================================================================
 
 $page_title = 'កន្លែងលក់ទំនិញផ្ទាល់ (POS)';
@@ -80,7 +80,6 @@ $products = $pdo->query("SELECT id, barcode, name, sale_price, current_stock FRO
                 <small class="text-muted">អត្រាប្តូរប្រាក់: <strong>1$ = <?= number_format(EXCHANGE_RATE) ?> ៛</strong></small>
             </div>
             
-            <!-- ប្រអប់ស្កេនបាកូដ -->
             <div class="input-group mb-3">
                 <span class="input-group-text bg-white"><i class="fa fa-barcode"></i></span>
                 <input type="text" id="barcode-input" class="form-control" placeholder="ស្កេនបាកូដ ឬវាយឈ្មោះទំនិញ (ចុច Enter ដើម្បីបញ្ចូល)..." autofocus>
@@ -108,15 +107,15 @@ $products = $pdo->query("SELECT id, barcode, name, sale_price, current_stock FRO
         <div class="card border-0 shadow-sm rounded-3 p-3">
             <h6 class="fw-bold mb-3 text-success"><i class="fa fa-shopping-cart me-2"></i>កន្ត្រកទំនិញ (Cart)</h6>
             
-            <div class="table-responsive" style="min-height: 180px; max-height: 230px; overflow-y: auto;">
+            <div class="table-responsive" style="min-height: 180px; max-height: 240px; overflow-y: auto;">
                 <table class="table table-sm align-middle">
                     <thead class="table-light">
                         <tr>
                             <th>ទំនិញ</th>
-                            <th width="90">ចំនួន</th>
+                            <th width="115" class="text-center">ចំនួន (Qty)</th>
                             <th>តម្លៃ</th>
                             <th>សរុប</th>
-                            <th width="30"></th>
+                            <th width="25"></th>
                         </tr>
                     </thead>
                     <tbody id="cart-list">
@@ -201,6 +200,21 @@ function changeQty(id, delta) {
     renderCartView();
 }
 
+// អនុគមន៍អនុញ្ញាតឱ្យវាយចំនួន (Typing Qty) ផ្ទាល់ដៃ
+function setTypedQty(id, value) {
+    let item = cart.find(x => x.id === id);
+    if (!item) return;
+    let qty = parseInt(value) || 1;
+    if (qty <= 0) {
+        qty = 1;
+    } else if (qty > item.maxStock) {
+        qty = item.maxStock;
+        alert('ស្តុកមានត្រឹមតែ ' + item.maxStock + ' ប៉ុណ្ណោះ!');
+    }
+    item.qty = qty;
+    renderCartView();
+}
+
 function renderCartView() {
     const tbody = document.getElementById('cart-list');
     if (cart.length === 0) {
@@ -219,16 +233,20 @@ function renderCartView() {
         let total = item.price * item.qty;
         subtotal += total;
         html += '<tr>' +
-            '<td class="small fw-bold">' + item.name + '</td>' +
+            '<td class="small fw-bold text-truncate" style="max-width:110px;">' + item.name + '</td>' +
             '<td>' +
-                '<div class="btn-group btn-group-sm">' +
-                    '<button type="button" class="btn btn-light btn-sm" onclick="changeQty(' + item.id + ', -1)">-</button>' +
-                    '<span class="px-2 py-1 bg-white border small">' + item.qty + '</span>' +
-                    '<button type="button" class="btn btn-light btn-sm" onclick="changeQty(' + item.id + ', 1)">+</button>' +
+                '<div class="input-group input-group-sm" style="width: 105px;">' +
+                    '<button type="button" class="btn btn-outline-secondary px-2" onclick="changeQty(' + item.id + ', -1)">-</button>' +
+                    '<input type="number" min="1" max="' + item.maxStock + '" value="' + item.qty + '" ' +
+                           'class="form-control text-center p-0 fw-bold" ' +
+                           'onchange="setTypedQty(' + item.id + ', this.value)" ' +
+                           'onkeydown="if(event.key===\'Enter\'){event.preventDefault(); this.blur();}" ' +
+                           'onfocus="this.select()">' +
+                    '<button type="button" class="btn btn-outline-secondary px-2" onclick="changeQty(' + item.id + ', 1)">+</button>' +
                 '</div>' +
             '</td>' +
-            '<td>$' + item.price.toFixed(2) + '</td>' +
-            '<td class="fw-bold text-success">$' + total.toFixed(2) + '</td>' +
+            '<td class="small">$' + item.price.toFixed(2) + '</td>' +
+            '<td class="fw-bold text-success small">$' + total.toFixed(2) + '</td>' +
             '<td><button type="button" class="btn btn-sm text-danger p-0" onclick="changeQty(' + item.id + ', -' + item.qty + ')"><i class="fa fa-times"></i></button></td>' +
         '</tr>';
     });
@@ -270,7 +288,7 @@ function calcChange(grandUSD) {
     }
 }
 
-// ស្កេនបាកូដ USB (ចុច Enter ចូលកន្ត្រកភ្លាមៗ)
+// ស្កេនបាកូដ USB
 document.getElementById('barcode-input').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
         e.preventDefault();
