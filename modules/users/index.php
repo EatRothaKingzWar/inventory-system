@@ -1,14 +1,15 @@
 ﻿<?php
 // =========================================================================
 // ឯកសារ: modules/users/index.php
-// គោលបំណង: គ្រប់គ្រងគណនីបុគ្គលិក និងបង្កើតគណនី Cashier (សម្រាប់តែ Admin)
+// គោលបំណង: គ្រប់គ្រងអ្នកប្រើប្រាស់ (ដាក់ដំណើរការ POST មុន Header ការពារ Error)
 // =========================================================================
 
-$page_title = 'គ្រប់គ្រងអ្នកប្រើប្រាស់ (Users)';
-require_once __DIR__ . '/../../includes/header.php';
-require_role(['admin']); // ការពារសុវត្ថិភាព៖ អនុញ្ញាតតែ Admin ប៉ុណ្ណោះ
+require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../../includes/functions.php';
+require_once __DIR__ . '/../../includes/auth.php';
+require_role(['admin']);
 
-// ១. ដំណើរការបង្កើតគណនីថ្មី
+// ១. ដំណើរការបង្កើតគណនីថ្មី (ដំណើរការមុនពេល Render HTML)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_user'])) {
     $full_name = trim($_POST['full_name'] ?? '');
     $username  = trim($_POST['username'] ?? '');
@@ -23,7 +24,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_user'])) {
         if ($stmt->fetch()) {
             set_flash('danger', 'ឈ្មោះគណនីនេះមានអ្នកប្រើប្រាស់រួចហើយ! សូមជ្រើសរើសឈ្មោះផ្សេង។');
         } else {
-            // Hash Password ដោយ BCRYPT
             $hash = password_hash($password, PASSWORD_BCRYPT);
             $sql = "INSERT INTO users (full_name, username, password_hash, role) VALUES (?, ?, ?, ?)";
             db_query($pdo, $sql, [$full_name ?: $username, $username, $hash, $role]);
@@ -36,7 +36,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_user'])) {
 // ២. ដំណើរការលុបគណនី
 if (isset($_GET['delete'])) {
     $del_id = (int)$_GET['delete'];
-    // ការពារកុំឱ្យលុបគណនីខ្លួនឯង
     if ($del_id === (int)$_SESSION['user_id']) {
         set_flash('danger', 'អ្នកមិនអាចលុបគណនីដែលកំពុងប្រើប្រាស់បានទេ!');
     } else {
@@ -46,12 +45,15 @@ if (isset($_GET['delete'])) {
     redirect('/modules/users/index.php');
 }
 
-// ៣. ទាញបញ្ជីអ្នកប្រើប្រាស់ទាំងអស់
+// ៣. ទាញបញ្ជីអ្នកប្រើប្រាស់
 $users = $pdo->query("SELECT id, full_name, username, role, created_at FROM users ORDER BY id DESC")->fetchAll();
+
+$page_title = 'គ្រប់គ្រងអ្នកប្រើប្រាស់ (Users)';
+require_once __DIR__ . '/../../includes/header.php';
 ?>
 
 <div class="row g-4">
-    <!-- ផ្នែកខាងឆ្វេង៖ ទម្រង់បង្កើតគណនីបុគ្គលិក/Cashier -->
+    <!-- ទម្រង់បង្កើតគណនី Cashier -->
     <div class="col-lg-4 col-md-5">
         <div class="card border-0 shadow-sm rounded-3 p-3">
             <h6 class="fw-bold mb-3 text-primary"><i class="fa fa-user-plus me-2"></i>បង្កើតគណនីបុគ្គលិកថ្មី</h6>
@@ -80,7 +82,6 @@ $users = $pdo->query("SELECT id, full_name, username, role, created_at FROM user
                         <option value="staff">📦 បុគ្គលិកស្តុក (Staff) - នាំចូលស្តុក</option>
                         <option value="admin">👑 អ្នកគ្រប់គ្រង (Admin) - សិទ្ធិពេញលេញ</option>
                     </select>
-                    <small class="text-muted" style="font-size:11px;">* Cashier អាចលក់ទំនិញបាន តែមិនអាចមើលរបាយការណ៍ចំណេញបានទេ</small>
                 </div>
 
                 <button type="submit" class="btn btn-primary btn-sm w-100 py-2 fw-bold">
@@ -90,7 +91,7 @@ $users = $pdo->query("SELECT id, full_name, username, role, created_at FROM user
         </div>
     </div>
 
-    <!-- ផ្នែកខាងស្តាំ៖ បញ្ជីគណនីទាំងអស់ -->
+    <!-- បញ្ជីអ្នកប្រើប្រាស់ -->
     <div class="col-lg-8 col-md-7">
         <div class="card border-0 shadow-sm rounded-3 p-3">
             <h6 class="fw-bold mb-3 text-dark"><i class="fa fa-users me-2"></i>បញ្ជីគណនីអ្នកប្រើប្រាស់ទាំងអស់</h6>
