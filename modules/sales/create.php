@@ -1,7 +1,7 @@
 ﻿<?php
 // =========================================================================
 // ឯកសារ: modules/sales/create.php
-// គោលបំណង: ផ្ទាំងលក់ POS - ជួសជុលបញ្ហា Redirect ទៅកាន់វិក្កយបត្រឱ្យចេញត្រូវ ID
+// គោលបំណង: ផ្ទាំង POS គ្រឿងសំណង់ - រៀបចំប្លង់ទំនិញស្មើពេញផ្ទៃ គ្មាន Space ទំនេរ
 // =========================================================================
 
 $page_title = 'កន្លែងលក់គ្រឿងសំណង់ (POS)';
@@ -66,8 +66,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['checkout'])) {
 
             $pdo->commit();
             set_flash('success', "ការលក់ជោគជ័យ! ប័ណ្ណលេខ: " . $invoice_no);
-            
-            // កែសម្រួល Redirect ភ្ជាប់ជាមួយ ID ត្រឹមត្រូវ ១០០%
             redirect('/modules/sales/invoice.php?id=' . $sale_id);
 
         } catch (Exception $e) {
@@ -96,17 +94,32 @@ $products = $pdo->query($sql_products)->fetchAll();
 .qty-num-input {
     -moz-appearance: textfield;
 }
+.pos-product-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #ffffff;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+.pos-product-card:hover {
+    border-color: #2563eb;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12);
+}
 </style>
 
 <div class="row g-3">
-    <!-- ផ្នែកខាងឆ្វេង៖ ជ្រើសរើសទំនិញ -->
-    <div class="col-lg-7 col-md-6">
-        <div class="card border-0 shadow-sm rounded-3 p-3 h-100">
+    <!-- ផ្នែកខាងឆ្វេង៖ បញ្ជីទំនិញ & Filter (លាតពេញផ្ទៃ មិនសល់ Space) -->
+    <div class="col-lg-7 col-md-6 d-flex">
+        <div class="card border-0 shadow-sm rounded-3 p-3 w-100 d-flex flex-column">
+            
+            <!-- ក្បាលផ្នែកខាងឆ្វេង -->
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <h6 class="fw-bold mb-0 text-primary"><i class="fa fa-boxes me-2"></i>ទំនិញគ្រឿងសំណង់</h6>
                 <small class="text-muted">1$ = <strong><?= number_format(EXCHANGE_RATE) ?> ៛</strong></small>
             </div>
 
+            <!-- Filter ប្រភេទ -->
             <div class="d-flex gap-1 mb-2 overflow-x-auto pb-1" style="white-space: nowrap;">
                 <button type="button" class="btn btn-sm btn-primary category-btn active px-3" onclick="filterCategory('all', this)">
                     <i class="fa fa-th-large me-1"></i>ទាំងអស់
@@ -118,46 +131,56 @@ $products = $pdo->query($sql_products)->fetchAll();
                 <?php endforeach; ?>
             </div>
             
+            <!-- ប្រអប់ស្វែងរក & ស្កេនបាកូដ -->
             <div class="input-group mb-3">
                 <span class="input-group-text bg-white"><i class="fa fa-barcode"></i></span>
                 <input type="text" id="barcode-input" class="form-control" placeholder="ស្កេនបាកូដ ឬវាយឈ្មោះទំនិញ..." autofocus>
             </div>
             
-            <div class="row row-cols-2 row-cols-xl-3 g-2" style="max-height: 520px; overflow-y: auto;">
-                <?php foreach ($products as $p): ?>
-                    <div class="col product-item" 
-                         data-id="<?= $p['id'] ?>" 
-                         data-name="<?= strtolower(e($p['name'])) ?>" 
-                         data-barcode="<?= e($p['barcode']) ?>"
-                         data-category-id="<?= $p['category_id'] ?: 0 ?>">
-                        
-                        <div class="card p-2 h-100 border text-center shadow-sm product-card" 
-                             style="cursor: pointer;"
-                             onclick="addItemToCart(<?= $p['id'] ?>, '<?= addslashes(e($p['name'])) ?>', <?= $p['sale_price'] ?>, <?= $p['current_stock'] ?>, '<?= addslashes(e($p['unit'] ?: 'ដើម')) ?>')">
+            <!-- ផ្ទាំងបង្ហាញទំនិញ (Auto Flex-Grow ពេញកម្ពស់ និង Scroll ស្រួល) -->
+            <div class="flex-grow-1 overflow-y-auto pe-1" style="min-height: 480px;">
+                <div class="row row-cols-2 row-cols-xl-3 row-cols-xxl-4 g-2">
+                    <?php foreach ($products as $p): ?>
+                        <div class="col product-item" 
+                             data-id="<?= $p['id'] ?>" 
+                             data-name="<?= strtolower(e($p['name'])) ?>" 
+                             data-barcode="<?= e($p['barcode']) ?>"
+                             data-category-id="<?= $p['category_id'] ?: 0 ?>">
                             
-                            <div class="mb-1">
-                                <span class="badge bg-secondary-subtle text-secondary border small px-2 py-1">
-                                    <?= e($p['category_name'] ?: 'ទូទៅ') ?>
-                                </span>
-                            </div>
+                            <div class="p-2 h-100 text-center pos-product-card d-flex flex-column justify-content-between shadow-none" 
+                                 onclick="addItemToCart(<?= $p['id'] ?>, '<?= addslashes(e($p['name'])) ?>', <?= $p['sale_price'] ?>, <?= $p['current_stock'] ?>, '<?= addslashes(e($p['unit'] ?: 'ដើម')) ?>')">
+                                
+                                <div>
+                                    <span class="badge bg-light text-secondary border small px-2 py-1 mb-1">
+                                        <?= e($p['category_name'] ?: 'ទូទៅ') ?>
+                                    </span>
+                                    <div class="fw-bold text-dark text-truncate" title="<?= e($p['name']) ?>"><?= e($p['name']) ?></div>
+                                </div>
 
-                            <div class="fw-bold text-dark text-truncate" title="<?= e($p['name']) ?>"><?= e($p['name']) ?></div>
-                            <div class="text-success fw-bold fs-5 mb-0">$<?= number_format($p['sale_price'], 2) ?> <small class="text-muted fs-6">/ <?= e($p['unit'] ?: 'ដើម') ?></small></div>
-                            <small class="text-danger fw-bold"><?= number_format($p['sale_price'] * EXCHANGE_RATE) ?> ៛</small>
-                            <div class="mt-1"><span class="badge bg-light text-secondary border">ស្តុក: <?= $p['current_stock'] ?> <?= e($p['unit'] ?: '') ?></span></div>
+                                <div class="my-2">
+                                    <div class="text-success fw-bold fs-5 mb-0">$<?= number_format($p['sale_price'], 2) ?></div>
+                                    <small class="text-muted d-block" style="font-size:11px;">/ <?= e($p['unit'] ?: 'ដើម') ?></small>
+                                    <small class="text-danger fw-bold"><?= number_format($p['sale_price'] * EXCHANGE_RATE) ?> ៛</small>
+                                </div>
+
+                                <div>
+                                    <span class="badge bg-light text-secondary border small">ស្តុក: <?= $p['current_stock'] ?> <?= e($p['unit'] ?: '') ?></span>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                <?php endforeach; ?>
+                    <?php endforeach; ?>
+                </div>
             </div>
+
         </div>
     </div>
 
-    <!-- ផ្នែកខាងស្តាំ៖ ព័ត៌មានមេការ & កន្ត្រកទំនិញ -->
-    <div class="col-lg-5 col-md-6">
-        <div class="card border-0 shadow-sm rounded-3 p-3">
+    <!-- ផ្នែកខាងស្តាំ៖ កន្ត្រកទំនិញ & គិតលុយ -->
+    <div class="col-lg-5 col-md-6 d-flex">
+        <div class="card border-0 shadow-sm rounded-3 p-3 w-100 d-flex flex-column">
             <h6 class="fw-bold mb-3 text-success"><i class="fa fa-shopping-cart me-2"></i>កន្ត្រកទំនិញ (Cart)</h6>
             
-            <form method="POST">
+            <form method="POST" class="d-flex flex-column flex-grow-1">
                 <input type="hidden" name="checkout" value="1">
                 <input type="hidden" name="cart_data" id="cart-data-json">
 
@@ -175,7 +198,7 @@ $products = $pdo->query($sql_products)->fetchAll();
                     </div>
                 </div>
 
-                <div class="table-responsive" style="min-height: 180px; max-height: 230px; overflow-y: auto;">
+                <div class="table-responsive flex-grow-1" style="min-height: 180px; max-height: 230px; overflow-y: auto;">
                     <table class="table table-sm align-middle mb-0">
                         <thead class="table-light">
                             <tr>
@@ -192,57 +215,59 @@ $products = $pdo->query($sql_products)->fetchAll();
                     </table>
                 </div>
 
-                <div class="d-flex justify-content-between my-1 pt-2 border-top">
-                    <span class="text-muted small">សរុបរង:</span>
-                    <span class="fw-bold" id="subtotal-val">.00</span>
-                </div>
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <span class="text-muted small">បញ្ចុះតម្លៃ ($):</span>
-                    <input type="number" step="0.01" name="discount" id="discount-val" class="form-control form-control-sm text-end" style="width: 90px;" value="0" oninput="updateCalculation()">
-                </div>
-                
-                <div class="p-2 bg-light rounded-3 mb-2 border">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="fw-bold fs-6">ត្រូវទូទាត់ (USD):</span>
-                        <span class="fw-bold text-danger fs-4" id="grand-total-usd">.00</span>
+                <div class="mt-auto pt-2 border-top">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted small">សរុបរង:</span>
+                        <span class="fw-bold" id="subtotal-val">.00</span>
                     </div>
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="fw-bold text-muted small">ជាប្រាក់រៀល (KHR):</span>
-                        <span class="fw-bold text-primary fs-5" id="grand-total-khr">0 ៛</span>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-muted small">បញ្ចុះតម្លៃ ($):</span>
+                        <input type="number" step="0.01" name="discount" id="discount-val" class="form-control form-control-sm text-end" style="width: 90px;" value="0" oninput="updateCalculation()">
                     </div>
-                </div>
+                    
+                    <div class="p-2 bg-light rounded-3 mb-2 border">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="fw-bold fs-6">ត្រូវទូទាត់ (USD):</span>
+                            <span class="fw-bold text-danger fs-4" id="grand-total-usd">.00</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="fw-bold text-muted small">ជាប្រាក់រៀល (KHR):</span>
+                            <span class="fw-bold text-primary fs-5" id="grand-total-khr">0 ៛</span>
+                        </div>
+                    </div>
 
-                <div class="row g-2 mb-2">
-                    <div class="col-6">
-                        <label class="form-label small fw-bold mb-1">ស្ថានភាពទូទាត់</label>
-                        <select name="payment_status" id="payment-status-select" class="form-select form-select-sm" onchange="togglePaymentStatus()">
-                            <option value="paid">✅ បង់ដាច់ (Paid)</option>
-                            <option value="unpaid">⏳ ជំពាក់ (Credit)</option>
-                        </select>
+                    <div class="row g-2 mb-2">
+                        <div class="col-6">
+                            <label class="form-label small fw-bold mb-1">ស្ថានភាពទូទាត់</label>
+                            <select name="payment_status" id="payment-status-select" class="form-select form-select-sm" onchange="togglePaymentStatus()">
+                                <option value="paid">✅ បង់ដាច់ (Paid)</option>
+                                <option value="unpaid">⏳ ជំពាក់ (Credit)</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-bold mb-1">វិធីទូទាត់</label>
+                            <select name="payment_method" class="form-select form-select-sm">
+                                <option value="cash">សាច់ប្រាក់ (Cash)</option>
+                                <option value="khqr">KHQR / ធនាគារ</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="col-6">
-                        <label class="form-label small fw-bold mb-1">វិធីទូទាត់</label>
-                        <select name="payment_method" class="form-select form-select-sm">
-                            <option value="cash">សាច់ប្រាក់ (Cash)</option>
-                            <option value="khqr">KHQR / ធនាគារ</option>
-                        </select>
-                    </div>
-                </div>
 
-                <div id="cash-change-box" class="mb-3">
-                    <div class="input-group input-group-sm mb-1">
-                        <span class="input-group-text">$</span>
-                        <input type="number" step="0.01" id="cash-received" class="form-control fw-bold text-primary" placeholder="ប្រាក់ទទួលពីភ្ញៀវ ($)" oninput="calcChange()">
+                    <div id="cash-change-box" class="mb-3">
+                        <div class="input-group input-group-sm mb-1">
+                            <span class="input-group-text">$</span>
+                            <input type="number" step="0.01" id="cash-received" class="form-control fw-bold text-primary" placeholder="ប្រាក់ទទួលពីភ្ញៀវ ($)" oninput="calcChange()">
+                        </div>
+                        <div class="d-flex justify-content-between text-success fw-bold p-1 px-2 bg-white border rounded small">
+                            <span>ប្រាក់អាប់:</span>
+                            <span id="change-text">.00 (0 ៛)</span>
+                        </div>
                     </div>
-                    <div class="d-flex justify-content-between text-success fw-bold p-1 px-2 bg-white border rounded small">
-                        <span>ប្រាក់អាប់:</span>
-                        <span id="change-text">.00 (0 ៛)</span>
-                    </div>
-                </div>
 
-                <button type="submit" class="btn btn-success w-100 py-2 fw-bold fs-6 shadow-sm">
-                    <i class="fa fa-check-circle me-1"></i> ចេញវិក្កយបត្រ & ប័ណ្ណដឹកទំនិញ
-                </button>
+                    <button type="submit" class="btn btn-success w-100 py-2 fw-bold fs-6 shadow-sm">
+                        <i class="fa fa-check-circle me-1"></i> ចេញវិក្កយបត្រ & ប័ណ្ណដឹកទំនិញ
+                    </button>
+                </div>
             </form>
         </div>
     </div>
