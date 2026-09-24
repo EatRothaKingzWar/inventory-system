@@ -1,7 +1,7 @@
 ﻿<?php
 // =========================================================================
 // ឯកសារ: modules/sales/create.php
-// គោលបំណង: ផ្ទាំង POS គ្រឿងសំណង់ + ឈ្មោះមេការ + ការដ្ឋាន + ជំពាក់/បង់ដាច់
+// គោលបំណង: ផ្ទាំងលក់ POS - រៀបចំប្រអប់ចំនួន (Qty) ឱ្យធំទូលាយ មិនធ្លាក់ជួរ
 // =========================================================================
 
 $page_title = 'កន្លែងលក់គ្រឿងសំណង់ (POS)';
@@ -9,17 +9,11 @@ require_once __DIR__ . '/../../includes/header.php';
 
 define('EXCHANGE_RATE', 4100);
 
-// បង្កើត Columns បន្ថែមសម្រាប់អតិថិជន និងការដ្ឋានក្នុង PostgreSQL
-$pdo->exec("ALTER TABLE sales ADD COLUMN IF NOT EXISTS customer_name VARCHAR(100)");
-$pdo->exec("ALTER TABLE sales ADD COLUMN IF NOT EXISTS customer_phone VARCHAR(30)");
-$pdo->exec("ALTER TABLE sales ADD COLUMN IF NOT EXISTS delivery_address TEXT");
-$pdo->exec("ALTER TABLE sales ADD COLUMN IF NOT EXISTS payment_status VARCHAR(20) DEFAULT 'paid'");
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['checkout'])) {
     $cart             = json_decode($_POST['cart_data'] ?? '[]', true);
     $discount         = (float)($_POST['discount'] ?? 0);
     $payment_method   = $_POST['payment_method'] ?? 'cash';
-    $payment_status   = $_POST['payment_status'] ?? 'paid'; // 'paid' (បង់ដាច់) or 'unpaid' (ជំពាក់)
+    $payment_status   = $_POST['payment_status'] ?? 'paid';
     $customer_name    = trim($_POST['customer_name'] ?? '') ?: 'អតិថិជនទូទៅ';
     $customer_phone   = trim($_POST['customer_phone'] ?? '');
     $delivery_address = trim($_POST['delivery_address'] ?? '');
@@ -47,7 +41,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['checkout'])) {
 
             $total_amount = max(0, $subtotal - $discount);
 
-            // បញ្ចូលការលក់ រួមទាំងឈ្មោះមេការ ការដ្ឋាន និងស្ថានភាពជំពាក់
             $sql_sale = "INSERT INTO sales (invoice_no, user_id, subtotal, discount, total_amount, payment_method, payment_status, customer_name, customer_phone, delivery_address) 
                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id";
             $stmt = $pdo->prepare($sql_sale);
@@ -93,7 +86,7 @@ $products = $pdo->query($sql_products)->fetchAll();
 
 <div class="row g-3">
     <!-- ផ្នែកខាងឆ្វេង៖ ជ្រើសរើសទំនិញ -->
-    <div class="col-md-7">
+    <div class="col-lg-7 col-md-6">
         <div class="card border-0 shadow-sm rounded-3 p-3 h-100">
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <h6 class="fw-bold mb-0 text-primary"><i class="fa fa-boxes me-2"></i>ទំនិញគ្រឿងសំណង់</h6>
@@ -117,7 +110,7 @@ $products = $pdo->query($sql_products)->fetchAll();
                 <input type="text" id="barcode-input" class="form-control" placeholder="ស្កេនបាកូដ ឬវាយឈ្មោះទំនិញ..." autofocus>
             </div>
             
-            <div class="row row-cols-2 row-cols-lg-3 g-2" style="max-height: 520px; overflow-y: auto;">
+            <div class="row row-cols-2 row-cols-xl-3 g-2" style="max-height: 520px; overflow-y: auto;">
                 <?php foreach ($products as $p): ?>
                     <div class="col product-item" 
                          data-id="<?= $p['id'] ?>" 
@@ -135,7 +128,7 @@ $products = $pdo->query($sql_products)->fetchAll();
                                 </span>
                             </div>
 
-                            <div class="fw-bold text-dark text-truncate"><?= e($p['name']) ?></div>
+                            <div class="fw-bold text-dark text-truncate" title="<?= e($p['name']) ?>"><?= e($p['name']) ?></div>
                             <div class="text-success fw-bold fs-5 mb-0">$<?= number_format($p['sale_price'], 2) ?> <small class="text-muted fs-6">/ <?= e($p['unit'] ?: 'ដើម') ?></small></div>
                             <small class="text-danger fw-bold"><?= number_format($p['sale_price'] * EXCHANGE_RATE) ?> ៛</small>
                             <div class="mt-1"><span class="badge bg-light text-secondary border">ស្តុក: <?= $p['current_stock'] ?> <?= e($p['unit'] ?: '') ?></span></div>
@@ -146,8 +139,8 @@ $products = $pdo->query($sql_products)->fetchAll();
         </div>
     </div>
 
-    <!-- ផ្នែកខាងស្តាំ៖ ព័ត៌មានមេការ/ការដ្ឋាន & កន្ត្រកទំនិញ & គិតលុយ -->
-    <div class="col-md-5">
+    <!-- ផ្នែកខាងស្តាំ៖ ព័ត៌មានមេការ & កន្ត្រកទំនិញ -->
+    <div class="col-lg-5 col-md-6">
         <div class="card border-0 shadow-sm rounded-3 p-3">
             <h6 class="fw-bold mb-3 text-success"><i class="fa fa-shopping-cart me-2"></i>កន្ត្រកទំនិញ (Cart)</h6>
             
@@ -155,30 +148,29 @@ $products = $pdo->query($sql_products)->fetchAll();
                 <input type="hidden" name="checkout" value="1">
                 <input type="hidden" name="cart_data" id="cart-data-json">
 
-                <!-- ព័ត៌មានអតិថិជន / មេការ / ការដ្ឋាន -->
                 <div class="p-2 bg-light rounded-3 mb-2 border">
                     <div class="row g-2">
                         <div class="col-7">
-                            <input type="text" name="customer_name" class="form-control form-control-sm" placeholder="ឈ្មោះមេការ / អតិថិជន (ឧ. មេការ ផល្លា)">
+                            <input type="text" name="customer_name" class="form-control form-control-sm" placeholder="ឈ្មោះមេការ / អតិថិជន">
                         </div>
                         <div class="col-5">
                             <input type="text" name="customer_phone" class="form-control form-control-sm" placeholder="លេខទូរស័ព្ទ">
                         </div>
                         <div class="col-12">
-                            <input type="text" name="delivery_address" class="form-control form-control-sm" placeholder="ទីតាំងការដ្ឋានដឹកជញ្ជូន (ឧ. ការដ្ឋាន បុរី...)">
+                            <input type="text" name="delivery_address" class="form-control form-control-sm" placeholder="ទីតាំងការដ្ឋានដឹកជញ្ជូន">
                         </div>
                     </div>
                 </div>
 
-                <!-- តារាងកន្ត្រកទំនិញ -->
-                <div class="table-responsive" style="min-height: 160px; max-height: 200px; overflow-y: auto;">
+                <!-- តារាងកន្ត្រកទំនិញ (រៀបចំជួរឱ្យធំទូលាយ មិនធ្លាក់ជួរ) -->
+                <div class="table-responsive" style="min-height: 180px; max-height: 230px; overflow-y: auto;">
                     <table class="table table-sm align-middle mb-0">
                         <thead class="table-light">
                             <tr>
                                 <th>ទំនិញ</th>
-                                <th width="125" class="text-center">ចំនួន (ឯកតា)</th>
-                                <th>តម្លៃ</th>
-                                <th>សរុប</th>
+                                <th width="115" class="text-center">ចំនួន (Qty)</th>
+                                <th class="text-end" width="70">តម្លៃ</th>
+                                <th class="text-end" width="75">សរុប</th>
                                 <th width="25"></th>
                             </tr>
                         </thead>
@@ -208,7 +200,6 @@ $products = $pdo->query($sql_products)->fetchAll();
                     </div>
                 </div>
 
-                <!-- ជម្រើសបង់ដាច់ ឬជំពាក់ -->
                 <div class="row g-2 mb-2">
                     <div class="col-6">
                         <label class="form-label small fw-bold mb-1">ស្ថានភាពទូទាត់</label>
@@ -226,7 +217,6 @@ $products = $pdo->query($sql_products)->fetchAll();
                     </div>
                 </div>
 
-                <!-- ប្រអប់ប្រាក់ទទួលពីភ្ញៀវ (លាក់បើជ្រើសរើសជំពាក់) -->
                 <div id="cash-change-box" class="mb-3">
                     <div class="input-group input-group-sm mb-1">
                         <span class="input-group-text">$</span>
@@ -249,17 +239,14 @@ $products = $pdo->query($sql_products)->fetchAll();
 <script>
 const RATE = <?= EXCHANGE_RATE ?>;
 const allProducts = <?= json_encode($products) ?>;
+const D_SIGN = String.fromCharCode(36); // សញ្ញា $ ការពារកុំឱ្យ PowerShell លុប
 let cart = [];
 let currentCategory = 'all';
 
 function togglePaymentStatus() {
     let status = document.getElementById('payment-status-select').value;
     let box = document.getElementById('cash-change-box');
-    if (status === 'unpaid') {
-        box.style.display = 'none';
-    } else {
-        box.style.display = 'block';
-    }
+    box.style.display = (status === 'unpaid') ? 'none' : 'block';
 }
 
 function addItemToCart(id, name, price, maxStock, unit) {
@@ -307,8 +294,8 @@ function renderCartView() {
     const tbody = document.getElementById('cart-list');
     if (cart.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">សូមជ្រើសរើសទំនិញខាងឆ្វេងដើម្បីលក់</td></tr>';
-        document.getElementById('subtotal-val').innerText = '.00';
-        document.getElementById('grand-total-usd').innerText = '.00';
+        document.getElementById('subtotal-val').innerText = D_SIGN + '0.00';
+        document.getElementById('grand-total-usd').innerText = D_SIGN + '0.00';
         document.getElementById('grand-total-khr').innerText = '0 ៛';
         document.getElementById('cart-data-json').value = '[]';
         calcChange();
@@ -322,24 +309,23 @@ function renderCartView() {
         subtotal += total;
         html += '<tr>' +
             '<td>' +
-                '<div class="small fw-bold text-truncate" style="max-width:115px;">' + item.name + '</div>' +
-                '<small class="text-muted">' + item.unit + '</small>' +
+                '<div class="fw-bold text-dark text-truncate" style="max-width:110px;" title="' + item.name + '">' + item.name + '</div>' +
+                '<span class="badge bg-light text-secondary border" style="font-size:10px;">' + item.unit + '</span>' +
             '</td>' +
             '<td>' +
-                '<div class="input-group input-group-sm" style="width: 120px;">' +
+                '<div class="input-group input-group-sm mx-auto" style="width: 105px;">' +
                     '<button type="button" class="btn btn-outline-secondary px-2" onclick="changeQty(' + item.id + ', -1)">-</button>' +
                     '<input type="number" min="1" max="' + item.maxStock + '" value="' + item.qty + '" ' +
-                           'class="form-control text-center p-0 fw-bold" ' +
+                           'class="form-control text-center p-0 fw-bold fs-6" ' +
                            'onchange="setTypedQty(' + item.id + ', this.value)" ' +
                            'onkeydown="if(event.key===\'Enter\'){event.preventDefault(); this.blur();}" ' +
                            'onfocus="this.select()">' +
-                    '<span class="input-group-text px-1 small" style="font-size:10px;">' + item.unit + '</span>' +
                     '<button type="button" class="btn btn-outline-secondary px-2" onclick="changeQty(' + item.id + ', 1)">+</button>' +
                 '</div>' +
             '</td>' +
-            '<td class="small">$' + item.price.toFixed(2) + '</td>' +
-            '<td class="fw-bold text-success small">$' + total.toFixed(2) + '</td>' +
-            '<td><button type="button" class="btn btn-sm text-danger p-0" onclick="changeQty(' + item.id + ', -' + item.qty + ')"><i class="fa fa-times"></i></button></td>' +
+            '<td class="text-end small">' + D_SIGN + item.price.toFixed(2) + '</td>' +
+            '<td class="text-end fw-bold text-success small">' + D_SIGN + total.toFixed(2) + '</td>' +
+            '<td><button type="button" class="btn btn-sm text-danger p-0 ms-1" onclick="changeQty(' + item.id + ', -' + item.qty + ')"><i class="fa fa-times"></i></button></td>' +
         '</tr>';
     });
 
@@ -357,8 +343,8 @@ function updateCalculation(subtotal) {
     let grandUSD = Math.max(0, subtotal - discount);
     let grandKHR = Math.round(grandUSD * RATE);
 
-    document.getElementById('subtotal-val').innerText = '$' + subtotal.toFixed(2);
-    document.getElementById('grand-total-usd').innerText = '$' + grandUSD.toFixed(2);
+    document.getElementById('subtotal-val').innerText = D_SIGN + subtotal.toFixed(2);
+    document.getElementById('grand-total-usd').innerText = D_SIGN + grandUSD.toFixed(2);
     document.getElementById('grand-total-khr').innerText = grandKHR.toLocaleString() + ' ៛';
 
     calcChange(grandUSD);
@@ -366,7 +352,7 @@ function updateCalculation(subtotal) {
 
 function calcChange(grandUSD) {
     if (typeof grandUSD === 'undefined') {
-        let text = document.getElementById('grand-total-usd').innerText.replace('$', '');
+        let text = document.getElementById('grand-total-usd').innerText.replace(D_SIGN, '');
         grandUSD = parseFloat(text) || 0;
     }
     let received = parseFloat(document.getElementById('cash-received').value) || 0;
@@ -374,9 +360,9 @@ function calcChange(grandUSD) {
     let changeKHR = Math.round(changeUSD * RATE);
 
     if (received > 0) {
-        document.getElementById('change-text').innerText = '$' + changeUSD.toFixed(2) + ' (' + changeKHR.toLocaleString() + ' ៛)';
+        document.getElementById('change-text').innerText = D_SIGN + changeUSD.toFixed(2) + ' (' + changeKHR.toLocaleString() + ' ៛)';
     } else {
-        document.getElementById('change-text').innerText = '.00 (0 ៛)';
+        document.getElementById('change-text').innerText = D_SIGN + '0.00 (0 ៛)';
     }
 }
 
