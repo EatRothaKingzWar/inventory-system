@@ -20,9 +20,8 @@
         <a href="/modules/reports/monthly.php"><i class="fa fa-calendar-check me-2"></i> របាយការណ៍ប្រចាំខែ</a>
         <a href="/modules/reports/sales.php"><i class="fa fa-chart-line me-2"></i> របាយការណ៍ចំណេញ</a>
 
-        <?php if ((['user_role'] ?? '') === 'admin'): ?>
-            <div class="text-uppercase text-muted small fw-bold mt-3 mb-2 px-2">ការកំណត់ប្រព័ន្ធ</div>
-            <a href="/modules/users/index.php"><i class="fa fa-users-cog me-2"></i> អ្នកប្រើប្រាស់ (Users)</a>
-        <?php endif; ?>
+        <!-- ម៉ឺនុយគ្រប់គ្រងអ្នកប្រើប្រាស់ & បង្កើត Cashier -->
+        <div class="text-uppercase text-muted small fw-bold mt-3 mb-2 px-2">ការកំណត់ប្រព័ន្ធ</div>
+        <a href="/modules/users/index.php"><i class="fa fa-users-cog me-2"></i> អ្នកប្រើប្រាស់ (Users)</a>
     </nav>
 </div>
