@@ -1,17 +1,17 @@
-<?php
+﻿<?php
 // =========================================================================
 // ឯកសារ: modules/adjustments/create.php
-// គោលបំណង: កែសម្រួលស្តុកដោយដៃ (ខូច, បាត់, ផុតកំណត់)
+// គោលបំណង: កែតម្រូវស្តុក (ខូច/បាត់/ផុតកំណត់) - ជួសជុលកំណត់សម្គាល់មិនឱ្យចេញ {}
 // =========================================================================
 
 $page_title = 'កែតម្រូវស្តុកទំនិញ';
 require_once __DIR__ . '/../../includes/header.php';
 
-$products = $pdo->query("SELECT id, name, current_stock FROM products ORDER BY name ASC")->fetchAll();
+$products = $pdo->query("SELECT id, name, unit, current_stock FROM products ORDER BY name ASC")->fetchAll();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $product_id = (int)($_POST['product_id'] ?? 0);
-    $type       = $_POST['type'] ?? 'subtract'; // 'add' (លើស) or 'subtract' (ខូច/បាត់)
+    $type       = $_POST['type'] ?? 'subtract';
     $quantity   = (int)($_POST['quantity'] ?? 0);
     $reason     = trim($_POST['reason'] ?? '');
     $user_id    = $_SESSION['user_id'];
@@ -22,7 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $pdo->beginTransaction();
 
-            $prod = db_query($pdo, "SELECT current_stock FROM products WHERE id = ? FOR UPDATE", [$product_id])->fetch();
+            $prod = db_query($pdo, "SELECT current_stock, unit FROM products WHERE id = ? FOR UPDATE", [$product_id])->fetch();
             if (!$prod) throw new Exception("រកមិនឃើញទំនិញ!");
 
             $qty_change = ($type === 'add') ? $quantity : -$quantity;
@@ -32,19 +32,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new Exception("ចំនួនស្តុកមិនអាចតិចជាងសូន្យឡើយ!");
             }
 
-            // ក. បញ្ចូលក្នុង stock_adjustments
             $stmt_adj = $pdo->prepare("INSERT INTO stock_adjustments (user_id, reason) VALUES (?, ?) RETURNING id");
             $stmt_adj->execute([$user_id, $reason]);
             $adj_id = $stmt_adj->fetchColumn();
 
-            // ខ. បញ្ចូលក្នុង stock_adjustment_items
             db_query($pdo, "INSERT INTO stock_adjustment_items (adjustment_id, product_id, quantity_adjusted) VALUES (?, ?, ?)", [$adj_id, $product_id, $qty_change]);
-
-            // គ. កែសម្រួលស្តុកក្នុង products
             db_query($pdo, "UPDATE products SET current_stock = ? WHERE id = ?", [$new_balance, $product_id]);
 
-            // ឃ. កត់ត្រាក្នុង Movement Log
-            record_stock_movement($pdo, $product_id, 'ADJUSTMENT', $adj_id, $qty_change, $new_balance, "កែតម្រូវ: {}");
+            // កត់ត្រាចូល stock_movements ដោយមិនប្រើ interpolation {}
+            $note = "កែតម្រូវ: " . $reason;
+            record_stock_movement($pdo, $product_id, 'ADJUSTMENT', $adj_id, $qty_change, $new_balance, $note);
 
             $pdo->commit();
             set_flash('success', 'បានកែតម្រូវស្តុកដោយជោគជ័យ!');
@@ -65,32 +62,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="card-body p-4">
         <form method="POST">
             <div class="mb-3">
-                <label class="form-label">ជ្រើសរើសទំនិញ *</label>
+                <label class="form-label small fw-bold">ជ្រើសរើសទំនិញ *</label>
                 <select name="product_id" class="form-select" required>
                     <option value="">-- ជ្រើសរើសទំនិញ --</option>
                     <?php foreach ($products as $p): ?>
-                        <option value="<?= $p['id'] ?>"><?= e($p['name']) ?> (ស្តុកបច្ចុប្បន្ន: <?= $p['current_stock'] ?>)</option>
+                        <option value="<?= $p['id'] ?>"><?= e($p['name']) ?> (ស្តុកបច្ចុប្បន្ន: <?= $p['current_stock'] ?> <?= e($p['unit'] ?: '') ?>)</option>
                     <?php endforeach; ?>
                 </select>
             </div>
 
             <div class="row g-2 mb-3">
                 <div class="col-6">
-                    <label class="form-label">ប្រភេទកែតម្រូវ *</label>
+                    <label class="form-label small fw-bold">ប្រភេទកែតម្រូវ *</label>
                     <select name="type" class="form-select" required>
                         <option value="subtract">ដកចេញ (-) (ខូច, បាត់, ផុតកំណត់)</option>
-                        <option value="add">បូកបន្ថែម (+) (រាប់សារពើភ័ណ្ឌលើស)</option>
+                        <option value="add">បូកបន្ថែម (+) (រាប់លើស)</option>
                     </select>
                 </div>
                 <div class="col-6">
-                    <label class="form-label">ចំនួនកែប្រែ *</label>
+                    <label class="form-label small fw-bold">ចំនួនកែប្រែ *</label>
                     <input type="number" name="quantity" class="form-control" min="1" required placeholder="ចំនួន">
                 </div>
             </div>
 
             <div class="mb-3">
-                <label class="form-label">មូលហេតុនៃការកែតម្រូវ *</label>
-                <textarea name="reason" class="form-control" rows="3" required placeholder="ឧទាហរណ៍: ទំនិញធ្លាក់បែកពេលរៀបចំ, ផុតកាលបរិច្ឆេទប្រើប្រាស់..."></textarea>
+                <label class="form-label small fw-bold">មូលហេតុនៃការកែតម្រូវ *</label>
+                <textarea name="reason" class="form-control" rows="3" required placeholder="ឧទាហរណ៍: ការ៉ូធ្លាក់បែកពេលលើកដាក់ឡាន..."></textarea>
             </div>
 
             <div class="d-flex justify-content-end gap-2">
