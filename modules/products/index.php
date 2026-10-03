@@ -17,12 +17,18 @@ $sql = "SELECT p.*, c.name AS category_name
         LEFT JOIN categories c ON p.category_id = c.id";
 
 if ($search !== '') {
+    // ចំណាំ៖ ប្រសិនបើប្រើ PostgreSQL ទុក ILIKE, បើប្រើ MySQL ប្តូរជា LIKE
     $sql .= " WHERE p.name ILIKE ? OR p.barcode ILIKE ?";
-    $params = ["%{}%", "%{}%"];
+    $params = ["%$search%", "%$search%"]; // បានកែសម្រួលត្រង់នេះ
 }
 $sql .= " ORDER BY p.id DESC";
 
 $products = db_query($pdo, $sql, $params)->fetchAll();
+
+// គណនាចំនួនជួរឈរតាម Role សម្រាប់ colspan
+$total_columns = 6;
+if ($user_role === 'admin' || $user_role === 'staff') $total_columns++;
+if ($user_role === 'admin') $total_columns++;
 ?>
 
 <div class="card border-0 shadow-sm rounded-3">
@@ -38,7 +44,12 @@ $products = db_query($pdo, $sql, $params)->fetchAll();
             
             <!-- ប៊ូតុងបន្ថែមទំនិញថ្មី បង្ហាញតែ Admin & Staff ប៉ុណ្ណោះ -->
             <?php if ($user_role === 'admin' || $user_role === 'staff'): ?>
-                <a href="create.php" class="btn btn-primary"><i class="fa fa-plus me-1"></i> បន្ថែមទំនិញថ្មី</a>
+                <div class="d-flex gap-2">
+                    <a href="create.php" class="btn btn-primary"><i class="fa fa-plus me-1"></i> បន្ថែមទំនិញថ្មី</a>
+                    <a href="../../modules/reports/export_excel.php?table=products" class="btn btn-success">
+                        📥 Export ជា Excel
+                    </a>
+                </div>
             <?php endif; ?>
         </div>
 
@@ -51,7 +62,7 @@ $products = db_query($pdo, $sql, $params)->fetchAll();
                         <th>ប្រភេទ</th>
                         <th class="text-center">ឯកតា</th>
                         
-                        <!-- ថ្លៃដើម បង្ហាញតែ Admin & Staff ប៉ុណ្ណោះ (Cashier មិនអាចឃើញទេ) -->
+                        <!-- ថ្លៃដើម បង្ហាញតែ Admin & Staff ប៉ុណ្ណោះ -->
                         <?php if ($user_role === 'admin' || $user_role === 'staff'): ?>
                             <th>តម្លៃទិញដើម</th>
                         <?php endif; ?>
@@ -59,6 +70,7 @@ $products = db_query($pdo, $sql, $params)->fetchAll();
                         <th>តម្លៃលក់</th>
                         <th class="text-center">ស្តុកនៅសល់</th>
 
+                        <!-- សកម្មភាព បង្ហាញតែ Admin ប៉ុណ្ណោះ -->
                         <?php if ($user_role === 'admin'): ?>
                             <th class="text-center" width="90">សកម្មភាព</th>
                         <?php endif; ?>
@@ -66,11 +78,13 @@ $products = db_query($pdo, $sql, $params)->fetchAll();
                 </thead>
                 <tbody>
                     <?php if (empty($products)): ?>
-                        <tr><td colspan="8" class="text-center text-muted py-4">មិនមានទិន្នន័យទំនិញឡើយ</td></tr>
+                        <tr>
+                            <td colspan="<?= $total_columns ?>" class="text-center text-muted py-4">មិនមានទិន្នន័យទំនិញឡើយ</td>
+                        </tr>
                     <?php else: foreach ($products as $p): ?>
                         <tr>
                             <td>
-                                <?php if ($p['image_path']): ?>
+                                <?php if (!empty($p['image_path'])): ?>
                                     <img src="/<?= e($p['image_path']) ?>" class="rounded" width="45" height="45" style="object-fit:cover;">
                                 <?php else: ?>
                                     <div class="bg-light rounded text-center text-muted pt-2" style="width:45px;height:45px;"><i class="fa fa-box"></i></div>
@@ -78,7 +92,7 @@ $products = db_query($pdo, $sql, $params)->fetchAll();
                             </td>
                             <td>
                                 <div class="fw-bold text-dark"><?= e($p['name']) ?></div>
-                                <?php if ($p['barcode']): ?>
+                                <?php if (!empty($p['barcode'])): ?>
                                     <small class="text-muted"><code><?= e($p['barcode']) ?></code></small>
                                 <?php endif; ?>
                             </td>
@@ -92,7 +106,7 @@ $products = db_query($pdo, $sql, $params)->fetchAll();
                             <td class="text-success fw-bold"><?= format_money($p['sale_price']) ?></td>
                             
                             <td class="text-center">
-                                <span class="badge <?= $p['current_stock'] <= $p['min_stock_alert'] ? 'bg-danger' : 'bg-primary' ?> px-2 py-1 fs-6">
+                                <span class="badge <?= $p['current_stock'] <= ($p['min_stock_alert'] ?? 0) ? 'bg-danger' : 'bg-primary' ?> px-2 py-1 fs-6">
                                     <?= $p['current_stock'] ?> <?= e($p['unit'] ?: '') ?>
                                 </span>
                             </td>
