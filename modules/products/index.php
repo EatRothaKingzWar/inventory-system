@@ -46,9 +46,9 @@ if ($user_role === 'admin') $total_columns++;
             <?php if ($user_role === 'admin' || $user_role === 'staff'): ?>
                 <div class="d-flex gap-2">
                     <a href="create.php" class="btn btn-primary"><i class="fa fa-plus me-1"></i> បន្ថែមទំនិញថ្មី</a>
-                    <a href="../../modules/reports/export_excel.php?table=products" class="btn btn-success">
-                        📥 Export ជា Excel
-                    </a>
+                   <a href="../../modules/reports/export_excel.php" class="btn btn-success btn-lg shadow-sm">
+    📊 ទាញយកទិន្នន័យទាំងអស់ជា Excel (All-in-One)
+</a>
                 </div>
             <?php endif; ?>
         </div>
