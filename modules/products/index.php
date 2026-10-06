@@ -1,13 +1,12 @@
-﻿<?php
+<?php
 // =========================================================================
 // ឯកសារ: modules/products/index.php
-// គោលបំណង: បញ្ជីទំនិញ - លាក់ថ្លៃដើម និងលាក់ប៊ូតុង Edit/Delete ពី Cashier
+// គោលបំណង: បញ្ជីទំនិញ - គ្រប់គ្រងតាមសិទ្ធិ Tick Box (Admin/Staff/Cashier)
 // =========================================================================
 
 $page_title = 'គ្រប់គ្រងមុខទំនិញ';
 require_once __DIR__ . '/../../includes/header.php';
-
-$user_role = $_SESSION['user_role'] ?? 'cashier';
+require_permission('products');
 
 $search = trim($_GET['search'] ?? '');
 $params = [];
@@ -17,18 +16,13 @@ $sql = "SELECT p.*, c.name AS category_name
         LEFT JOIN categories c ON p.category_id = c.id";
 
 if ($search !== '') {
-    // ចំណាំ៖ ប្រសិនបើប្រើ PostgreSQL ទុក ILIKE, បើប្រើ MySQL ប្តូរជា LIKE
     $sql .= " WHERE p.name ILIKE ? OR p.barcode ILIKE ?";
-    $params = ["%$search%", "%$search%"]; // បានកែសម្រួលត្រង់នេះ
+    $params = ["%$search%", "%$search%"];
 }
 $sql .= " ORDER BY p.id DESC";
 
 $products = db_query($pdo, $sql, $params)->fetchAll();
-
-// គណនាចំនួនជួរឈរតាម Role សម្រាប់ colspan
-$total_columns = 6;
-if ($user_role === 'admin' || $user_role === 'staff') $total_columns++;
-if ($user_role === 'admin') $total_columns++;
+$can_edit = has_permission('products') && ($_SESSION['user_role'] === 'admin' || $_SESSION['user_role'] === 'staff');
 ?>
 
 <div class="card border-0 shadow-sm rounded-3">
@@ -42,13 +36,14 @@ if ($user_role === 'admin') $total_columns++;
                 <?php endif; ?>
             </form>
             
-            <!-- ប៊ូតុងបន្ថែមទំនិញថ្មី បង្ហាញតែ Admin & Staff ប៉ុណ្ណោះ -->
-            <?php if ($user_role === 'admin' || $user_role === 'staff'): ?>
+            <?php if ($can_edit): ?>
                 <div class="d-flex gap-2">
                     <a href="create.php" class="btn btn-primary"><i class="fa fa-plus me-1"></i> បន្ថែមទំនិញថ្មី</a>
-                   <a href="../../modules/reports/export_excel.php" class="btn btn-success btn-lg shadow-sm">
-    📊 ទាញយកទិន្នន័យទាំងអស់ជា Excel (All-in-One)
-</a>
+                    <?php if (has_permission('reports')): ?>
+                        <a href="/modules/reports/export_excel.php" class="btn btn-success shadow-sm">
+                            <i class="fa fa-file-excel me-1"></i> Export Excel
+                        </a>
+                    <?php endif; ?>
                 </div>
             <?php endif; ?>
         </div>
@@ -61,26 +56,19 @@ if ($user_role === 'admin') $total_columns++;
                         <th>ឈ្មោះទំនិញ</th>
                         <th>ប្រភេទ</th>
                         <th class="text-center">ឯកតា</th>
-                        
-                        <!-- ថ្លៃដើម បង្ហាញតែ Admin & Staff ប៉ុណ្ណោះ -->
-                        <?php if ($user_role === 'admin' || $user_role === 'staff'): ?>
+                        <?php if ($can_edit): ?>
                             <th>តម្លៃទិញដើម</th>
                         <?php endif; ?>
-
                         <th>តម្លៃលក់</th>
                         <th class="text-center">ស្តុកនៅសល់</th>
-
-                        <!-- សកម្មភាព បង្ហាញតែ Admin ប៉ុណ្ណោះ -->
-                        <?php if ($user_role === 'admin'): ?>
+                        <?php if ($_SESSION['user_role'] === 'admin'): ?>
                             <th class="text-center" width="90">សកម្មភាព</th>
                         <?php endif; ?>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if (empty($products)): ?>
-                        <tr>
-                            <td colspan="<?= $total_columns ?>" class="text-center text-muted py-4">មិនមានទិន្នន័យទំនិញឡើយ</td>
-                        </tr>
+                        <tr><td colspan="8" class="text-center text-muted py-4">មិនមានទិន្នន័យទំនិញឡើយ</td></tr>
                     <?php else: foreach ($products as $p): ?>
                         <tr>
                             <td>
@@ -99,7 +87,7 @@ if ($user_role === 'admin') $total_columns++;
                             <td><span class="badge bg-light text-dark border"><?= e($p['category_name'] ?: 'ទូទៅ') ?></span></td>
                             <td class="text-center"><span class="badge bg-secondary-subtle text-secondary px-2 py-1"><?= e($p['unit'] ?: 'ដើម') ?></span></td>
                             
-                            <?php if ($user_role === 'admin' || $user_role === 'staff'): ?>
+                            <?php if ($can_edit): ?>
                                 <td class="text-muted small"><?= format_money($p['cost_price']) ?></td>
                             <?php endif; ?>
 
@@ -111,11 +99,12 @@ if ($user_role === 'admin') $total_columns++;
                                 </span>
                             </td>
                             
-                            <!-- ប៊ូតុង Edit/Delete បង្ហាញតែ Admin ប៉ុណ្ណោះ -->
-                            <?php if ($user_role === 'admin'): ?>
+                            <?php if ($_SESSION['user_role'] === 'admin'): ?>
                                 <td class="text-center">
-                                    <a href="edit.php?id=<?= $p['id'] ?>" class="btn btn-sm btn-outline-primary" title="កែប្រែ"><i class="fa fa-edit"></i></a>
-                                    <a href="delete.php?id=<?= $p['id'] ?>" class="btn btn-sm btn-outline-danger" title="លុប" onclick="return confirm('តើអ្នកប្រាកដជាចង់លុបទំនិញនេះមែនទេ?')"><i class="fa fa-trash"></i></a>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="edit.php?id=<?= $p['id'] ?>" class="btn btn-outline-primary" title="កែប្រែ"><i class="fa fa-edit"></i></a>
+                                        <a href="delete.php?id=<?= $p['id'] ?>" class="btn btn-outline-danger" title="លុប" onclick="return confirm('តើអ្នកប្រាកដជាចង់លុបទំនិញនេះមែនទេ?')"><i class="fa fa-trash"></i></a>
+                                    </div>
                                 </td>
                             <?php endif; ?>
                         </tr>

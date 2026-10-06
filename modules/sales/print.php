@@ -1,13 +1,13 @@
-﻿<?php
+<?php
 // =========================================================================
 // ឯកសារ: modules/sales/print.php
-// គោលបំណង: បោះពុម្ពប័ណ្ណទូទាត់សម្រាប់ហាងលក់នៅផ្ទះ (Thermal Receipt 80mm)
+// គោលបំណង: បោះពុម្ពប័ណ្ណទូទាត់កម្ដៅ (Thermal Receipt 80mm)
 // =========================================================================
 
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../includes/functions.php';
 require_once __DIR__ . '/../../includes/auth.php';
-require_login();
+require_permission('sales');
 
 $sale_id = (int)($_GET['id'] ?? 0);
 
@@ -23,14 +23,7 @@ $items = db_query($pdo, "SELECT si.*, p.name FROM sale_items si JOIN products p 
     <title>Print - <?= e($sale['invoice_no']) ?></title>
     <style>
         @page { size: 80mm auto; margin: 0; }
-        body {
-            font-family: 'Courier New', monospace, sans-serif;
-            width: 76mm;
-            margin: auto;
-            padding: 8px 4px;
-            font-size: 12px;
-            color: #000;
-        }
+        body { font-family: 'Courier New', monospace, sans-serif; width: 76mm; margin: auto; padding: 8px 4px; font-size: 12px; color: #000; }
         .text-center { text-align: center; }
         .text-end { text-align: right; }
         .fw-bold { font-weight: bold; }
@@ -42,9 +35,8 @@ $items = db_query($pdo, "SELECT si.*, p.name FROM sale_items si JOIN products p 
     </style>
 </head>
 <body onload="window.print();">
-
     <div class="text-center border-dashed">
-        <h3 style="margin:0; font-size:16px;">ហាងលក់ទំនិញ / HOME STORE</h3>
+        <h3 style="margin:0; font-size:16px;">ដេប៉ូផ្គត់ផ្គង់គ្រឿងសំណង់</h3>
         <p style="margin:2px 0;">រាជធានីភ្នំពេញ | Tel: 012 345 678</p>
         <p style="margin:2px 0;"><strong>ប័ណ្ណទូទាត់ប្រាក់ / RECEIPT</strong></p>
     </div>
@@ -101,6 +93,5 @@ $items = db_query($pdo, "SELECT si.*, p.name FROM sale_items si JOIN products p 
         <p style="margin: 3px 0;">សូមអរគុណ! សូមអញ្ជើញមកម្តងទៀត!</p>
         <small>Thank you for your visit!</small>
     </div>
-
 </body>
 </html>

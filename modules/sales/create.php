@@ -1,11 +1,12 @@
-﻿<?php
+<?php
 // =========================================================================
 // ឯកសារ: modules/sales/create.php
-// គោលបំណង: ផ្ទាំង POS គ្រឿងសំណង់ - រៀបចំប្លង់ទំនិញស្មើពេញផ្ទៃ គ្មាន Space ទំនេរ
+// គោលបំណង: ផ្ទាំង POS គ្រឿងសំណង់ - រៀបចំប្លង់ទំនិញស្មើពេញផ្ទៃ & លឿន
 // =========================================================================
 
 $page_title = 'កន្លែងលក់គ្រឿងសំណង់ (POS)';
 require_once __DIR__ . '/../../includes/header.php';
+require_permission('pos');
 
 define('EXCHANGE_RATE', 4100);
 
@@ -19,7 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['checkout'])) {
     $delivery_address = trim($_POST['delivery_address'] ?? '');
     $user_id          = $_SESSION['user_id'];
 
-    if (empty($cart)) {
+    if (!is_array($cart) || empty($cart)) {
         set_flash('danger', 'កន្ត្រកទំនិញនៅទំនេរ! សូមជ្រើសរើសទំនិញជាមុនសិន។');
     } else {
         try {
@@ -29,39 +30,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['checkout'])) {
             $invoice_no = 'INV-' . date('ymd') . '-' . strtoupper(substr(uniqid(), -4));
 
             foreach ($cart as $item) {
+                $pid = (int)($item['id'] ?? 0);
+                $qty = (int)($item['qty'] ?? 0);
+                if ($pid <= 0 || $qty <= 0) continue;
+
                 $stmt = $pdo->prepare("SELECT id, name, current_stock, cost_price, sale_price FROM products WHERE id = ? FOR UPDATE");
-                $stmt->execute([$item['id']]);
+                $stmt->execute([$pid]);
                 $prod = $stmt->fetch();
 
-                if (!$prod || $prod['current_stock'] < $item['qty']) {
-                    throw new Exception("ទំនិញ '{['name']}' មិនមានស្តុកគ្រប់គ្រាន់ទេ!");
+                if (!$prod || $prod['current_stock'] < $qty) {
+                    throw new Exception("ទំនិញ '" . ($prod['name'] ?? 'មិនស្គាល់') . "' មិនមានស្តុកគ្រប់គ្រាន់ទេ!");
                 }
-                $subtotal += ($prod['sale_price'] * $item['qty']);
+                $subtotal += ($prod['sale_price'] * $qty);
             }
 
             $total_amount = max(0, $subtotal - $discount);
 
             $sql_sale = "INSERT INTO sales (invoice_no, user_id, subtotal, discount, total_amount, payment_method, payment_status, customer_name, customer_phone, delivery_address) 
-                          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id";
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id";
             $stmt = $pdo->prepare($sql_sale);
             $stmt->execute([$invoice_no, $user_id, $subtotal, $discount, $total_amount, $payment_method, $payment_status, $customer_name, $customer_phone, $delivery_address]);
             $sale_id = (int)$stmt->fetchColumn();
 
             foreach ($cart as $item) {
+                $pid = (int)($item['id'] ?? 0);
+                $qty = (int)($item['qty'] ?? 0);
+                if ($pid <= 0 || $qty <= 0) continue;
+
                 $prod_stmt = $pdo->prepare("SELECT current_stock, cost_price, sale_price FROM products WHERE id = ?");
-                $prod_stmt->execute([$item['id']]);
+                $prod_stmt->execute([$pid]);
                 $p = $prod_stmt->fetch();
 
-                $item_subtotal = $p['sale_price'] * $item['qty'];
+                $item_subtotal = $p['sale_price'] * $qty;
 
                 $stmt_item = $pdo->prepare("INSERT INTO sale_items (sale_id, product_id, quantity, unit_price, cost_price, subtotal) VALUES (?, ?, ?, ?, ?, ?)");
-                $stmt_item->execute([$sale_id, $item['id'], $item['qty'], $p['sale_price'], $p['cost_price'], $item_subtotal]);
+                $stmt_item->execute([$sale_id, $pid, $qty, $p['sale_price'], $p['cost_price'], $item_subtotal]);
 
-                $new_stock = $p['current_stock'] - $item['qty'];
-                db_query($pdo, "UPDATE products SET current_stock = ? WHERE id = ?", [$new_stock, $item['id']]);
+                $new_stock = $p['current_stock'] - $qty;
+                db_query($pdo, "UPDATE products SET current_stock = ? WHERE id = ?", [$new_stock, $pid]);
 
                 $note = "លក់ជូន: " . $customer_name . " (#" . $invoice_no . ")";
-                record_stock_movement($pdo, $item['id'], 'SALE', $sale_id, -$item['qty'], $new_stock, $note);
+                record_stock_movement($pdo, $pid, 'SALE', $sale_id, -$qty, $new_stock, $note);
             }
 
             $pdo->commit();
@@ -86,34 +95,17 @@ $products = $pdo->query($sql_products)->fetchAll();
 ?>
 
 <style>
-.qty-num-input::-webkit-inner-spin-button, 
-.qty-num-input::-webkit-outer-spin-button { 
-    -webkit-appearance: none; 
-    margin: 0; 
-}
-.qty-num-input {
-    -moz-appearance: textfield;
-}
-.pos-product-card {
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    background: #ffffff;
-    transition: all 0.2s ease;
-    cursor: pointer;
-}
-.pos-product-card:hover {
-    border-color: #2563eb;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12);
-}
+.qty-num-input::-webkit-inner-spin-button, .qty-num-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.qty-num-input { -moz-appearance: textfield; }
+.pos-product-card { border: 1px solid #e2e8f0; border-radius: 10px; background: #ffffff; transition: all 0.2s ease; cursor: pointer; }
+.pos-product-card:hover { border-color: #2563eb; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12); }
 </style>
 
 <div class="row g-3">
-    <!-- ផ្នែកខាងឆ្វេង៖ បញ្ជីទំនិញ & Filter (លាតពេញផ្ទៃ មិនសល់ Space) -->
+    <!-- ផ្នែកខាងឆ្វេង៖ បញ្ជីទំនិញ & Filter -->
     <div class="col-lg-7 col-md-6 d-flex">
         <div class="card border-0 shadow-sm rounded-3 p-3 w-100 d-flex flex-column">
             
-            <!-- ក្បាលផ្នែកខាងឆ្វេង -->
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <h6 class="fw-bold mb-0 text-primary"><i class="fa fa-boxes me-2"></i>ទំនិញគ្រឿងសំណង់</h6>
                 <small class="text-muted">1$ = <strong><?= number_format(EXCHANGE_RATE) ?> ៛</strong></small>
@@ -137,7 +129,7 @@ $products = $pdo->query($sql_products)->fetchAll();
                 <input type="text" id="barcode-input" class="form-control" placeholder="ស្កេនបាកូដ ឬវាយឈ្មោះទំនិញ..." autofocus>
             </div>
             
-            <!-- ផ្ទាំងបង្ហាញទំនិញ (Auto Flex-Grow ពេញកម្ពស់ និង Scroll ស្រួល) -->
+            <!-- ផ្ទាំងបង្ហាញទំនិញ -->
             <div class="flex-grow-1 overflow-y-auto pe-1" style="min-height: 480px;">
                 <div class="row row-cols-2 row-cols-xl-3 row-cols-xxl-4 g-2">
                     <?php foreach ($products as $p): ?>
@@ -218,7 +210,7 @@ $products = $pdo->query($sql_products)->fetchAll();
                 <div class="mt-auto pt-2 border-top">
                     <div class="d-flex justify-content-between mb-1">
                         <span class="text-muted small">សរុបរង:</span>
-                        <span class="fw-bold" id="subtotal-val">.00</span>
+                        <span class="fw-bold" id="subtotal-val">$0.00</span>
                     </div>
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <span class="text-muted small">បញ្ចុះតម្លៃ ($):</span>
@@ -228,7 +220,7 @@ $products = $pdo->query($sql_products)->fetchAll();
                     <div class="p-2 bg-light rounded-3 mb-2 border">
                         <div class="d-flex justify-content-between align-items-center">
                             <span class="fw-bold fs-6">ត្រូវទូទាត់ (USD):</span>
-                            <span class="fw-bold text-danger fs-4" id="grand-total-usd">.00</span>
+                            <span class="fw-bold text-danger fs-4" id="grand-total-usd">$0.00</span>
                         </div>
                         <div class="d-flex justify-content-between align-items-center">
                             <span class="fw-bold text-muted small">ជាប្រាក់រៀល (KHR):</span>
@@ -260,7 +252,7 @@ $products = $pdo->query($sql_products)->fetchAll();
                         </div>
                         <div class="d-flex justify-content-between text-success fw-bold p-1 px-2 bg-white border rounded small">
                             <span>ប្រាក់អាប់:</span>
-                            <span id="change-text">.00 (0 ៛)</span>
+                            <span id="change-text">$0.00 (0 ៛)</span>
                         </div>
                     </div>
 
@@ -276,7 +268,7 @@ $products = $pdo->query($sql_products)->fetchAll();
 <script>
 const RATE = <?= EXCHANGE_RATE ?>;
 const allProducts = <?= json_encode($products) ?>;
-const D_SIGN = String.fromCharCode(36);
+const D_SIGN = '$';
 let cart = [];
 let currentCategory = 'all';
 

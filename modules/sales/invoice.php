@@ -1,15 +1,15 @@
-﻿<?php
+<?php
 // =========================================================================
 // ឯកសារ: modules/sales/invoice.php
-// គោលបំណង: បង្ហាញវិក្កយបត្រ + ប៊ូតុងទទួលលុយសងដាច់
+// គោលបំណង: បង្ហាញព័ត៌មានលម្អិតវិក្កយបត្រ + ប៊ូតុងទទួលលុយសងដាច់
 // =========================================================================
 
 $page_title = 'ព័ត៌មានលម្អិតវិក្កយបត្រ';
 require_once __DIR__ . '/../../includes/header.php';
+require_permission('sales');
 
 $sale_id = (int)($_GET['id'] ?? 0);
 
-// ដំណើរការទទួលលុយសង
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['settle_debt'])) {
     db_query($pdo, "UPDATE sales SET payment_status = 'paid' WHERE id = ?", [$sale_id]);
     set_flash('success', 'បានកត់ត្រាការទូទាត់លុយសងរួចរាល់!');
@@ -37,7 +37,6 @@ $items = db_query($pdo, $sql_items, [$sale_id])->fetchAll();
 <div class="card border-0 shadow-sm rounded-3 mx-auto" style="max-width: 850px;">
     <div class="card-body p-4">
         
-        <!-- ប្រអប់ជូនដំណឹងករណីជំពាក់ & ប៊ូតុងសងលុយ -->
         <?php if (($sale['payment_status'] ?? 'paid') === 'unpaid'): ?>
             <div class="alert alert-danger d-flex justify-content-between align-items-center mb-4">
                 <div>
@@ -52,7 +51,6 @@ $items = db_query($pdo, $sql_items, [$sale_id])->fetchAll();
             </div>
         <?php endif; ?>
 
-        <!-- ក្បាលវិក្កយបត្រ -->
         <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-3">
             <div>
                 <h4 class="fw-bold text-primary mb-1"><i class="fa fa-file-invoice me-2"></i>វិក្កយបត្រ & ប័ណ្ណដឹកជញ្ជូន</h4>
@@ -68,7 +66,6 @@ $items = db_query($pdo, $sql_items, [$sale_id])->fetchAll();
             </div>
         </div>
 
-        <!-- ព័ត៌មានមេការ & ការដ្ឋាន -->
         <div class="row g-3 mb-4 bg-light p-3 rounded-3 border">
             <div class="col-md-6">
                 <small class="text-muted text-uppercase fw-bold">មេការ / អតិថិជន:</small>
@@ -81,7 +78,6 @@ $items = db_query($pdo, $sql_items, [$sale_id])->fetchAll();
             </div>
         </div>
 
-        <!-- តារាងទំនិញ -->
         <table class="table table-bordered align-middle">
             <thead class="table-light">
                 <tr>
@@ -123,7 +119,6 @@ $items = db_query($pdo, $sql_items, [$sale_id])->fetchAll();
             </tfoot>
         </table>
 
-        <!-- ប៊ូតុង Print -->
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-4 pt-2 border-top">
             <a href="/modules/sales/create.php" class="btn btn-outline-secondary">
                 <i class="fa fa-arrow-left me-1"></i> ទៅកន្លែងលក់វិញ

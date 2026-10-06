@@ -1,14 +1,12 @@
-﻿<?php
+<?php
 // =========================================================================
 // ឯកសារ: modules/products/create.php
-// គោលបំណង: បន្ថែមទំនិញថ្មី + បន្ថែមឯកតាគ្រឿងសំណង់ (បាវ, ដើម, គីឡូ, ធុង...)
+// គោលបំណង: បន្ថែមទំនិញថ្មី + ឯកតាគ្រឿងសំណង់ (បាវ, ដើម, គីឡូ, ធុង...)
 // =========================================================================
 
 $page_title = 'បន្ថែមទំនិញថ្មី';
 require_once __DIR__ . '/../../includes/header.php';
-
-// បង្កើត Column 'unit' ដោយស្វ័យប្រវត្តិក្នុង PostgreSQL ប្រសិនបើមិនទាន់មាន
-$pdo->exec("ALTER TABLE products ADD COLUMN IF NOT EXISTS unit VARCHAR(30) DEFAULT 'ដើម'");
+require_permission('products');
 
 $categories = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC")->fetchAll();
 
@@ -31,6 +29,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (in_array($ext, $allowed)) {
             $new_filename = uniqid('prod_') . '.' . $ext;
             $target = __DIR__ . '/../../uploads/products/' . $new_filename;
+            if (!is_dir(dirname($target))) {
+                mkdir(dirname($target), 0777, true);
+            }
             if (move_uploaded_file($file['tmp_name'], $target)) {
                 $image_path = 'uploads/products/' . $new_filename;
             }
@@ -79,7 +80,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <input type="text" name="name" class="form-control" required placeholder="ឧទាហរណ៍: ស៊ីម៉ងត៍ កំពត បក្សី, ដែក ១២លី...">
                 </div>
 
-                <!-- ប្រអប់ជ្រើសរើស និងវាយឯកតាទំនិញ -->
                 <div class="col-md-4">
                     <label class="form-label small fw-bold">ឯកតា (Unit) <span class="text-danger">*</span></label>
                     <input list="unit-options" name="unit" class="form-control" required placeholder="ជ្រើសរើស ឬវាយ..." value="ដើម">
@@ -89,11 +89,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <option value="គីឡូ">គីឡូ (ដែកគោល, លួសចងដែក...)</option>
                         <option value="ធុង">ធុង (ថ្នាំលាប, ថ្នាំទ្រនាប់...)</option>
                         <option value="ប្រអប់">ប្រអប់ (ការ៉ូ, វីស...)</option>
-                        <option value="សន្លឹក">សន្លឹក (ក្តារបន្ទះ, ស័ង្កសី, ជីបស៊ុម...)</option>
-                        <option value="ដុំ">ដុំ (ឥដ្ឋ, គ្រឿងតំណទុយោ...)</option>
-                        <option value="ម៉ែត្រ">ម៉ែត្រ (ខ្សែភ្លើង, ទុយោទឹក...)</option>
+                        <option value="សន្លឹក">សន្លឹក (ក្តារបន្ទះ, ស័ង្កសី...)</option>
+                        <option value="ដុំ">ដុំ (ឥដ្ឋ, គ្រឿងតំណ...)</option>
+                        <option value="ម៉ែត្រ">ម៉ែត្រ (ខ្សែភ្លើង, ទុយោ...)</option>
                         <option value="ឡាន">ឡាន (ខ្សាច់, ថ្ម...)</option>
-                        <option value="ម៉ែត្រគូប">ម៉ែត្រគូប (m³)</option>
                     </datalist>
                 </div>
 

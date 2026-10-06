@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 // =========================================================================
 // ឯកសារ: modules/sales/print_a4.php
 // គោលបំណង: ប័ណ្ណដឹកជញ្ជូន និងវិក្កយបត្រខ្នាត A4/A5 សម្រាប់ដេប៉ូគ្រឿងសំណង់
@@ -7,7 +7,7 @@
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../includes/functions.php';
 require_once __DIR__ . '/../../includes/auth.php';
-require_login();
+require_permission('sales');
 
 $sale_id = (int)($_GET['id'] ?? 0);
 
@@ -25,13 +25,7 @@ $items = db_query($pdo, $sql_items, [$sale_id])->fetchAll();
     <title>ប័ណ្ណដឹកជញ្ជូន - <?= e($sale['invoice_no']) ?></title>
     <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Kantumruy Pro', sans-serif;
-            background: #fff;
-            color: #000;
-            padding: 20px;
-            font-size: 13px;
-        }
+        body { font-family: 'Kantumruy Pro', sans-serif; background: #fff; color: #000; padding: 20px; font-size: 13px; }
         .container { max-width: 800px; margin: auto; }
         .header-title { font-size: 22px; font-weight: bold; color: #1e3a8a; }
         .sub-title { font-size: 13px; color: #555; }
@@ -42,24 +36,17 @@ $items = db_query($pdo, $sql_items, [$sale_id])->fetchAll();
         .text-center { text-align: center; }
         .text-end { text-align: right; }
         .fw-bold { font-weight: bold; }
-        .badge-status {
-            display: inline-block; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 11px;
-        }
+        .badge-status { display: inline-block; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 11px; }
         .badge-paid { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
         .badge-unpaid { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
         .signature-section { margin-top: 50px; display: flex; justify-content: space-between; text-align: center; }
         .sig-box { width: 30%; }
         .sig-line { border-bottom: 1px dashed #000; height: 60px; margin-bottom: 8px; }
-        @media print {
-            body { padding: 0; }
-            .no-print { display: none; }
-        }
+        @media print { body { padding: 0; } .no-print { display: none; } }
     </style>
 </head>
 <body onload="window.print()">
 <div class="container">
-
-    <!-- ក្បាលវិក្កយបត្រដេប៉ូ -->
     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #1e3a8a; padding-bottom: 10px; margin-bottom: 15px;">
         <div>
             <div class="header-title">ដេប៉ូផ្គត់ផ្គង់គ្រឿងសំណង់ / DEPOT MATERIALS</div>
@@ -79,7 +66,6 @@ $items = db_query($pdo, $sql_items, [$sale_id])->fetchAll();
         </div>
     </div>
 
-    <!-- ព័ត៌មានអតិថិជន និងការដ្ឋាន -->
     <div style="display: flex; gap: 15px;">
         <div class="border-box" style="flex: 1;">
             <div class="fw-bold" style="color: #1e3a8a; margin-bottom: 5px;">ព័ត៌មានអតិថិជន / ការដ្ឋាន:</div>
@@ -95,7 +81,6 @@ $items = db_query($pdo, $sql_items, [$sale_id])->fetchAll();
         </div>
     </div>
 
-    <!-- តារាងទំនិញ -->
     <table>
         <thead>
             <tr>
@@ -145,7 +130,6 @@ $items = db_query($pdo, $sql_items, [$sale_id])->fetchAll();
         </tfoot>
     </table>
 
-    <!-- កន្លែងចុះហត្ថលេខា ៣ ផ្នែក -->
     <div class="signature-section">
         <div class="sig-box">
             <div>អ្នកចេញទំនិញ</div>
@@ -163,7 +147,6 @@ $items = db_query($pdo, $sql_items, [$sale_id])->fetchAll();
             <div>ហត្ថលេខា & ឈ្មោះ</div>
         </div>
     </div>
-
 </div>
 </body>
 </html>

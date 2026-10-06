@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 // =========================================================================
 // ឯកសារ: modules/sales/index.php
 // គោលបំណង: បញ្ជីវិក្កយបត្រ + ប៊ូតុងកត់ត្រាពេលមេការមកសងលុយ (Mark as Paid)
@@ -6,8 +6,8 @@
 
 $page_title = 'បញ្ជីវិក្កយបត្រលក់';
 require_once __DIR__ . '/../../includes/header.php';
+require_permission('sales');
 
-// ១. ដំណើរការពេលចុចប៊ូតុង «សងលុយ»
 if (isset($_GET['mark_paid'])) {
     $settle_id = (int)$_GET['mark_paid'];
     if ($settle_id > 0) {
@@ -102,7 +102,6 @@ foreach ($sales as $s) {
                                 <?php endif; ?>
                             </td>
 
-                            <!-- ស្ថានភាពទូទាត់ + ប៊ូតុងសងលុយ -->
                             <td class="text-center">
                                 <?php if (($row['payment_status'] ?? 'paid') === 'unpaid'): ?>
                                     <span class="badge bg-danger mb-1 d-block">⏳ ជំពាក់</span>

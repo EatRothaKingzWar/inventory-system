@@ -1,15 +1,14 @@
-﻿<?php
+<?php
 // =========================================================================
 // ឯកសារ: modules/products/edit.php
-// គោលបំណង: កែប្រែទំនិញ និងស្តុក (អនុញ្ញាតតែ ADMIN ប៉ុណ្ណោះ)
+// គោលបំណង: កែប្រែទំនិញ និងស្តុក
 // =========================================================================
 
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../includes/functions.php';
 require_once __DIR__ . '/../../includes/auth.php';
 
-// បិទសិទ្ធិដាច់ខាត៖ Cashier មិនអាចចូលទំព័រនេះឡើយ!
-require_role(['admin']);
+require_permission('products');
 
 $id = (int)($_GET['id'] ?? 0);
 $stmt = db_query($pdo, "SELECT * FROM products WHERE id = ?", [$id]);
@@ -41,6 +40,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (in_array($ext, $allowed)) {
             $new_filename = uniqid('prod_') . '.' . $ext;
             $target = __DIR__ . '/../../uploads/products/' . $new_filename;
+            if (!is_dir(dirname($target))) {
+                mkdir(dirname($target), 0777, true);
+            }
             if (move_uploaded_file($file['tmp_name'], $target)) {
                 $image_path = 'uploads/products/' . $new_filename;
             }
